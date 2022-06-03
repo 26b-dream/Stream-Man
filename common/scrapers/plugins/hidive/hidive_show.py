@@ -1,19 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from playwright.sync_api._generated import Page, BrowserContext
-
+    from playwright.sync_api._generated import Page, Playwright
+    from typing import Any, Optional
+    from common.extended_path import ExtendedPath
 # Standard Library
+import json
 from datetime import datetime
+from functools import cache
+
+# Third Party
+from bs4 import BeautifulSoup
+
+# Django
+from django.db import transaction
 
 # Common
 import common.extended_re as re
-from common.constants import DOWNLOADED_FILES_DIR
-from common.extended_path import ExtendedPath
 from common.extended_playwright import sync_playwright
-from common.scrapers.plugins.hidive.hidive_base import HidIveBase
+from common.scrapers.plugins.hidive.hidive_base import HidiveBase
 from common.scrapers.shared import ScraperShowShared
 
 # Config
@@ -22,10 +29,11 @@ from config.config import HIDIVESecrets
 
 # Apps
 # Shows
-from shows.models import Episode, Season
+from shows.models import Episode, Season, Show
 
 
-class HidIveShow(ScraperShowShared, HidIveBase):
+class HidiveShow(ScraperShowShared, HidiveBase):
+    FAVICON_URL = "https://www.hidive.com/favicon.ico"
     JUSTWATCH_PROVIDER_IDS = [430]
 
     # Two different URLs for movies and TV shows, but they use similiar structures
@@ -34,9 +42,15 @@ class HidIveShow(ScraperShowShared, HidIveBase):
     #   https://www.hidive.com/movies/initial-d-legend-1-awakening
     SHOW_URL_REGEX = re.compile(r"^(?:https?:\/\/www\.hidive\.com)?\/(?:tv|movies)\/(?P<show_id>.*)")
 
-    # Example episode URLs
-    #   https://www.netflix.com/watch/80156389
-    FAVICON_URL = "https://www.hidive.com/favicon.ico"
+    def __init__(self, show_identifier: Show | str) -> None:
+        # Construct information from str (URL)
+        if isinstance(show_identifier, str):
+            self.get_id_from_show_url(show_identifier)
+
+        # Construct information from Show (database entry)
+        else:
+            self.show_info = show_identifier
+            self.show_id = show_identifier.show_id
 
     def show_url(self) -> str:
         # This isn't the actual URL for movies, but it works
@@ -50,8 +64,6 @@ class HidIveShow(ScraperShowShared, HidIveBase):
         return f"{self.DOMAIN}/stream/{episode.season.season_id}/{episode.episode_id}/"
 
     def login(self, page: Page) -> None:
-        # Once the browser cloeses HIDIVE completely logs you out
-        # Being logged in is required to get the duration of an episode
         page.goto(f"{self.DOMAIN}/account/login", wait_until="networkidle")
 
         # If there is the accept cookies button click it
@@ -63,152 +75,175 @@ class HidIveShow(ScraperShowShared, HidIveBase):
         page.type("input[id='Email']", HIDIVESecrets.EMAIL)
         page.type("input[id='Password']", HIDIVESecrets.PASSWORD)
         page.click("button[id='signInButton']")
+
+        # When logging in user is redirected to the dashboard so wait for redirect to complete
         page.wait_for_url(f"{self.DOMAIN}/dashboard")
 
+    def login_if_needed(self, page: Page, url: str) -> None:
+        if page.query_selector("a[href='/account/login']"):
+            self.login(page)
+            page.goto(url, wait_until="networkidle")
+
+    def go_to_page_logged_in(self, page: Page, url: str) -> None:
+        page.goto(url, wait_until="networkidle")
+        self.login_if_needed(page, url)
+
+    @cache  # Values only change when show_html file changes
+    def show_html_season_urls(self) -> list[str]:
+        path = self.path_from_url(self.show_url())
+        if seasons := path.parsed_html().select("ul[class*='nav-tabs'] > li > a"):
+            return [partial_url.strict_get("href") for partial_url in seasons]
+        # Shows with only a single season don't have the season selector
+        # For these shows just return the original show URL
+        else:
+            return [self.show_url()]
+
+    @cache  # Values only change when show_html file changes
+    def season_html_episode_urls(self, season_path: ExtendedPath) -> list[str]:
+        episodes_div = season_path.parsed_html().strict_select("div[class='slick-track']")[0]
+        episodes = episodes_div.strict_select("div[class*='slick-slide'] a")
+        return [partial_url.strict_get("data-playurl") for partial_url in episodes]
+
+    @cache  # Values only change when show_html file changes
+    def json_from_html_file(self, path: ExtendedPath) -> dict[str, Any]:
+        json_string = path.parsed_html().strict_select_one("script[type='application/ld+json']").text
+        return json.loads(json_string)
+
+    def show_is_valid(self, parsed_show: Page | BeautifulSoup) -> bool:
+        # For simplicity convert PlayWright instances to BeautifulSoup instances
+        # This makes it easier to verify pages before and after downloading
+        # This is useful if verification requirements change
+        if isinstance(parsed_show, Page):
+            parsed_show = BeautifulSoup(parsed_show.content(), "html.parser")
+
+        # Check if there are multipel seasons
+        if season_selector := parsed_show.select_one("ul[class*='nav-tabs']"):
+            first_season_url = season_selector.strict_select("a")[0].strict_get("href")
+            partial_show_url = self.show_url().removeprefix(f"{self.DOMAIN}")
+
+            # Check if this is the first season
+            # This is done in case the URL for the second season was used instead of the first
+            if first_season_url != partial_show_url:
+                return False
+
+        # All verifications passed assume file is good
+        return True
+
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        if not self.directory.up_to_date(minimum_timestamp):
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
-            # Copnvert self.show_info.info_timestamp to unix timestamp
-            with sync_playwright() as p:
-                browser = p.chromium.launch_persistent_context(
-                    DOWNLOADED_FILES_DIR / "cookies/Chrome",
-                    headless=False,
-                    accept_downloads=True,
-                    channel="chrome",
-                )
-                page = browser.new_page()
+    def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
+        show_html_path = self.path_from_url(self.show_url())
+        if show_html_path.outdated(minimum_timestamp):
+            page = self.playwright_browser(playwright).new_page()
+            page.goto(self.show_url(), wait_until="networkidle")
 
-                page.goto(self.show_url(), wait_until="networkidle")
+            if not self.show_is_valid(page):
+                raise Exception(f"Invalid page {self.show_url()}")
 
-                # Login if required
-                if page.query_selector("a[href='/account/login']"):
-                    self.login(page)
-                    page.goto(self.show_url(), wait_until="networkidle")
+            show_html_path.write(page.content())
 
-                # Get the number of seasons on the page
-                # Shows that are just a single season don't have the buttons for season navigation
-                # Number of seasons should be set to 1 when the season selector is not present
-                season_buttons = page.query_selector_all("ul[class*='nav-tabs'] > li")
-                number_of_seasons = len(season_buttons) or 1
+        self.download_seasons(playwright, minimum_timestamp)
 
-                # Get information for each season if there are multiple seasons
-                if number_of_seasons != 1:
-                    for i in range(0, number_of_seasons):
-                        # Click the next season
-                        page.click(f"ul[class*='nav-tabs'] > li >> nth={i}")
-                        page.wait_for_load_state("networkidle")
+    def download_seasons(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
+        for partial_season_url in self.show_html_season_urls():
+            season_html_path = self.path_from_url(partial_season_url)
 
-                        # Save all files for this season
-                        self.save_files(browser, page, i)
-                # If there is only 1 season import that one season
-                else:
-                    self.save_files(browser, page, 0)
+            if season_html_path.outdated(minimum_timestamp):
+                page = self.playwright_browser(playwright).new_page()
+                page.goto(self.DOMAIN + partial_season_url)
+                # TODO: Verification
+                season_html_path.write(page.content())
 
-                self.clean_up_download(browser, p, number_of_seasons * 2, self.temp_show_directory)
+            self.download_episodes(playwright, season_html_path)
 
-    def save_files(self, browser: BrowserContext, page: Page, season_number: int) -> None:
-        # Pages for each episode need to be downloaded to get airing dates
-        # Content on the episode pages should be static, so re-use old files
-        if (self.directory / "Episode").exists() and not (self.temp_show_directory / "Episode").exists():
-            (self.directory / "Episode").copy_dir(self.temp_show_directory / "Episode")
-
-        # Save all season information
-        json_file = page.strict_query_selector("script[type='application/ld+json']").strict_text_content()
-        (self.temp_show_directory / "Season" / f"{season_number}.html").write(page.content())
-        (self.temp_show_directory / "Season" / f"{season_number}.json").write(json_file)
-
-        # Save the first season as the show page to make accessing data simpler
-        if season_number == 0:
-            (self.temp_show_directory / "Show" / "Show.html").write(page.content())
-            (self.temp_show_directory / "Show" / "Show.json").write(json_file)
-
+    def download_episodes(self, playwright: Playwright, season_html_path: ExtendedPath) -> None:
         # Download every episode because somwe information is only available on the episode pages
-        episodes_div = page.strict_query_selector("div[class='slick-track'] >> nth=0")
-        for episode_url in episodes_div.query_selector_all("div[class*='slick-slide'] a"):
-            partial_url = episode_url.strict_get_attribute("data-playurl")
-            path_name = ExtendedPath(partial_url).relative_to("/stream/").with_suffix(".json")
-            episode_json_path = self.temp_show_directory / "Episode" / path_name
-            episode_html_path = self.temp_show_directory / "Episode" / path_name
+        for partial_episode_url in self.season_html_episode_urls(season_html_path):
+            episode_html_path = self.path_from_url(partial_episode_url)
+            if not episode_html_path.exists():
+                page = self.playwright_browser(playwright).new_page()
 
-            if not episode_json_path.exists() or not episode_html_path.exists():
-                # Open episode in new tab
-                episode_page = browser.new_page()
-                episode_page.goto(f"{self.DOMAIN}{partial_url}", wait_until="networkidle")
+                # Episode length is only shown when logged in
+                self.go_to_page_logged_in(page, self.DOMAIN + partial_episode_url)
+                # TODO: Verification
+                episode_html_path.write(page.content())
 
-                # Save everything
-                episode_json = episode_page.strict_query_selector(
-                    "script[type='application/ld+json']"
-                ).strict_text_content()
-                episode_html_path.write(episode_page.content())
-                episode_json_path.write(episode_json)
-                episode_page.close()
-
-    def update_show_info(
+    @transaction.atomic
+    def import_all(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        parsed_show = self.parsed_files("Show", ".html")[0]
-        self.show_info.name = (
-            parsed_show.strict_select("title")[0]
-            .text.removeprefix("Stream ")
-            .removesuffix(" on HIDIVE")
-            .removesuffix(" Season 1")
-        )
-        self.show_info.description = parsed_show.strict_select("p[class='hidden-xs']")[0].text
-        self.show_info.thumbnail_url = parsed_show.strict_select("meta[property='og:image']")[0].text
-        # TODO: Is there a smaller image I can use?
-        self.show_info.image_url = self.show_info.thumbnail_url
-        self.show_info.add_timestamps_and_save(self.directory)
+        self.download_all(minimum_timestamp=minimum_info_timestamp)
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
 
-    def update_season_info(
+    def update_all(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        for sort_id, season_json in enumerate(self.parsed_files("Season", ".json")):
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
 
+    def update_show(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        parsed_show_html = self.path_from_url(self.show_url()).parsed_html()
+        if not self.show_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
+            parsed_json = self.json_from_html_file(self.path_from_url(self.show_url()))
+            self.show_info.name = parsed_json["name"]
+            self.show_info.description = parsed_show_html.strict_select("p[class='hidden-xs']")[0].text
+            self.show_info.thumbnail_url = parsed_json["image"]
+            # TODO: Is there a smaller image I can use?
+            self.show_info.image_url = self.show_info.thumbnail_url
+            self.set_weekly_update()
+            self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
+
+        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
+
+    def update_seasons(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        for i, season_url in enumerate(self.show_html_season_urls()):
             # The Show & Season Regex are basically the same so re-using this even though names don't match
-            regexed_url = re.strict_search(self.SHOW_URL_REGEX, season_json["url"])
-            season_id = regexed_url.group("show_id")
+            season_id = re.strict_search(self.SHOW_URL_REGEX, season_url).group("show_id")
             season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
+            season_html_path = self.path_from_url(season_url)
 
             if not season_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
-                season_info.name = season_json["name"]
+                parsed_season_json = self.json_from_html_file(self.path_from_url(season_url))
+                season_info.name = parsed_season_json["name"]
                 # TODO: Is there a value I can use for movies?
-                season_info.number = season_json.get("partOfSeason", {}).get("seasonNumber", "Unknown")
-                season_info.sort_order = sort_id
-                season_info.image_url = season_json["image"]
+                season_info.number = parsed_season_json.get("partOfSeason", {}).get("seasonNumber", "Unknown")
+                season_info.sort_order = i
+                season_info.image_url = parsed_season_json["image"]
                 season_info.thumbnail_url = season_info.image_url
-                season_info.add_timestamps_and_save(self.directory)
+                season_info.add_timestamps_and_save(self.path_from_url(season_url))
 
-    def update_episode_info(
+            self.update_episodes(season_info, season_html_path, minimum_info_timestamp, minimum_info_timestamp)
+
+    def update_episodes(
         self,
+        season_info: Season,
+        season_html_path: ExtendedPath,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        offset_index = 0
-        prev_episode_json = {}
-        for i, episode in enumerate(
-            zip(
-                self.parsed_files("Episode", ".json"),
-                self.parsed_files("Episode", ".html"),
-            )
-        ):
-            episode_json = episode[0]
-            episode_html = episode[1]
-
-            # The Show & Season Regex are basically the same so re-using this even though names don't match
-            regexed_url = re.strict_search(self.EPISODE_URL_REGEX, episode_json["url"])
-            season_id = regexed_url.group("season_id")
-            season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
-
-            html_url = episode_html.strict_select_one("meta[property='og:url']").strict_get("content")
-
-            regexed_url = re.strict_search(self.EPISODE_URL_REGEX, html_url)
-            episode_id = regexed_url.group("episode_id")
-
+        for i, episode_url in enumerate(self.season_html_episode_urls(season_html_path)):
+            episode_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("episode_id")
             episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
+
+            # If information is upt to date nothing needs to be done
+            if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
+                return
+
+            episode_json = self.json_from_html_file(self.path_from_url(episode_url))
+            episode_html = self.path_from_url(episode_url).parsed_html()
 
             if episode_json["@type"] == "Movie":
                 # For movies jsut re-use the movie name for the episode
@@ -218,38 +253,21 @@ class HidIveShow(ScraperShowShared, HidIveBase):
 
             episode_info.name = episode_json.get("partOfTVSeries", episode_json)["name"]
 
-            # When a new season or movie occurs the index for the image is reset
-            prev_season = prev_episode_json.get("partOfSeason", {}).get("seasonNumber")
-            current_season = episode_json.get("partOfSeason", {}).get("seasonNumber")
-            if prev_season is None or prev_season != current_season:
-                offset_index = i
-
             # This image seems consistent I guess
-            img = episode[1].strict_select("div[class='default-img'] img")
-            episode_info.thumbnail_url = img[i - offset_index].strict_get("src")
+            img = episode_html.strict_select("div[class='default-img'] img")
+            episode_info.thumbnail_url = img[i].strict_get("src")
             episode_info.image_url = episode_info.thumbnail_url.replace("256x144", "512x288")
 
-            # HiDive does not actually list dates for episodes there is just one single date for the entire season used on every episode
-            # Can work around this by just assuming episodes air weekly and incremeneting the date by a week for every episode
-
+            # HIDIVE lists episode airing dates in just this one location
             title_string = episode_html.strict_select("div[id='StreamTitleDescription']>h2")[0].text
-
-            # Pull date from string in this format Premiere: 10/16/2004
             date_string = re.strict_search(r"Premiere: (\d{1,2}\/\d{1,2}\/\d{4})", title_string).group(1)
             episode_info.release_date = datetime.strptime(date_string, "%m/%d/%Y").astimezone()
 
             # Description is only on the html file
             episode_info.description = episode_html.strict_select_one("div[id='StreamTitleDescription'] p").text
+            episode_info.number = episode_json.get("episodeNumber", "Unknown")
 
-            if episode_json.get("episodeNumber"):
-                # This has to be converted to a float to an integer, I have no idea why
-                episode_info.sort_order = int(float(episode_json["episodeNumber"]))
-            # As far as I know, movies only have 1 episode ever but nothing listed in the json
-            else:
-                episode_info.sort_order = 0
-            episode_info.number = str(episode_info.sort_order)
-
-            # Duration is only available fon the html file
+            # Duration is only available from the html file
             duration_string = episode_html.strict_select_one("div[class*='rmp-duration']").text
             split_values = duration_string.split(":")
             if len(split_values) == 3:
@@ -257,7 +275,6 @@ class HidIveShow(ScraperShowShared, HidIveBase):
             else:
                 hours = 0
                 minutes, seconds = split_values
-
             episode_info.duration = int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
-            episode_info.add_timestamps_and_save(self.directory)
-            prev_episode_json = episode_json
+
+            episode_info.add_timestamps_and_save(self.path_from_url(episode_url))

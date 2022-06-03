@@ -50,7 +50,7 @@ class JustWatch:
 
         # Update information
         if self.file_path(self.date).exists():
-            self.parsed_json = self.file_path(self.date).parse_json()
+            self.parsed_json = self.file_path(self.date).parsed_json()
 
             # Go through every website listed on JustWatch
             for provider in self.parsed_json["days"][0]["providers"]:

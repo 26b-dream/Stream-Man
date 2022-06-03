@@ -8,4 +8,3 @@ if TYPE_CHECKING:
 
 class CrunchyrollBase:
     WEBSITE = "CrunchyRoll"
-    OLD_DOMAIN = "https://crunchyroll.com"

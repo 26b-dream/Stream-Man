@@ -11,10 +11,10 @@ from datetime import date, datetime, timedelta
 # Common
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
-from common.extended_path import ExtendedPath
 from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperUpdateShared
 
+# Apps
 # Shows
 from shows.models import Show
 
@@ -24,27 +24,26 @@ from .crunchyroll_show import CrunchyrollShow
 
 
 class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
-    CALENDAR_URL = CrunchyrollBase.OLD_DOMAIN + "/simulcastcalendar"
+    DOMAIN = "https://crunchyroll.com"
+    CALENDAR_URL = DOMAIN + "/simulcastcalendar"
     JUSTWATCH_REGEX = re.compile(r"https:\/\/www\.crunchyroll\.com\/(?P<show_id>.*?)\/")
     JUSTWATCH_PROVIDER_IDS = [283]
 
     def check_for_updates(self, earliest_date: Optional[date] = None) -> None:
-        # If there are no shows for this website don't bother updating information
-        last_show = Show.objects.filter(website=self.WEBSITE).order_by("info_modified_timestamp").first()
+        last_show = Show.objects.filter(website=self.WEBSITE).order_by("info_timestamp").first()
 
+        # If there are no shows for this website don't bother updating information
         if not last_show:
             return
 
         # If there is no date string create one based on the oldest show for this website
         if not earliest_date:
-            asd = last_show.info_timestamp.date()
-            asd.weekday()
             timestamp_as_date = last_show.info_timestamp.date()
 
             # Subtract the weekday value from timestamp_ad_date so all dates fall on a Monday
             earliest_date = timestamp_as_date - timedelta(days=timestamp_as_date.weekday())
 
-        # Download calendar file is required
+        # Download calendar file if required
         if self.calendar_file_outdated(earliest_date):
             self.download_calendar_page(earliest_date)
 
@@ -56,22 +55,19 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
         # Import information from calendar
         self.import_calendar(earliest_date)
 
-    def calendar_path(self, date: date) -> ExtendedPath:
-        date_string = date.strftime("%Y-%m-%d")
-        return DOWNLOADED_FILES_DIR / "CrunchyRoll" / "Calendar" / f"{date_string}.html"
-
     def calendar_url(self, date: date) -> str:
         return self.CALENDAR_URL + "?date=" + date.strftime("%Y-%m-%d")
 
     # TODO: Maybe move some of this to an ExtendedPath function as it seems like it could be useful
     def calendar_file_outdated(self, date: date) -> bool:
+        calendar_path = self.path_from_url(self.calendar_url(date))
         # If the file does not exist it must be out of date
-        if not self.calendar_path(date).exists():
+        if not calendar_path.exists():
             return True
 
         # The file's minimum timestamp must be after the week ends to make sure it gets the entire schedule
         one_week_timestamp = datetime.combine(date + timedelta(days=7), datetime.min.time())
-        file_timestamp = datetime.fromtimestamp(self.calendar_path(date).stat().st_mtime)
+        file_timestamp = datetime.fromtimestamp(calendar_path.stat().st_mtime)
 
         # If the file was downloaded after the week was over the file is good
         if file_timestamp > one_week_timestamp:
@@ -91,16 +87,16 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
                 DOWNLOADED_FILES_DIR / "cookies/Chrome", headless=False, accept_downloads=True, channel="chrome"
             )
             page = browser.new_page()
-            page.goto(self.calendar_url(date), wait_until="load")
+            page.goto(self.calendar_url(date), wait_until="networkidle")
 
             # Download file
             # TODO: File verification
-            self.calendar_path(date).write(page.content())
+            self.path_from_url(self.calendar_url(date)).write(page.content())
 
             browser.close()
 
     def import_calendar(self, date: date) -> None:
-        parsed_calendar = self.calendar_path(date).parse_html()
+        parsed_calendar = self.path_from_url(self.calendar_url(date)).parsed_html()
         for day in parsed_calendar.strict_select("div[class='day-content']"):
             # Don't use strict select here because the schedule may not be completely filled
             for episode in day.select("ol>li"):

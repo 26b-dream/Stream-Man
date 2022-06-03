@@ -38,6 +38,7 @@ from shows.models import Show
 class ScraperShared(ABC):
     directory: ExtendedPath
     WEBSITE: str
+    DOMAIN: str
 
     @cache
     def files(self, type: str, extension: Literal[".html", ".json"]) -> list[ExtendedPath]:
@@ -103,10 +104,16 @@ class ScraperShared(ABC):
         output: list[dict[Any, Any] | BeautifulSoup] = []
         for pathname in self.files(type, extension):
             if extension == ".json":
-                output.append(pathname.parse_json())
+                output.append(pathname.parsed_json())
             elif extension == ".html":
-                output.append(pathname.parse_html())
+                output.append(pathname.parsed_html())
         return output
+
+    @cache  # Values should never change
+    def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
+        url = url.removeprefix(self.DOMAIN)
+        url = url.removeprefix("/")
+        return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
 
 
 class ScraperUpdateShared(ScraperShared, ABC):
@@ -141,50 +148,18 @@ class ScraperShowShared(ScraperShared, ABC):
             self.show_info = show_identifier
             self.show_id = show_identifier.show_id
 
-        self.partial_show_directory = ExtendedPath(self.WEBSITE) / "Show" / f"{self.show_id}"
-        self.directory = DOWNLOADED_FILES_DIR / self.partial_show_directory
-        # If a show has never been imported use a special static temporary directory
-        # This is done to cache information because some wbesites can require hundreds of page downloads for a single show
-        # If the download fails midway through using a static folder will allow it to resume
-        if not self.directory.exists():
-            self.temp_show_directory = DOWNLOADED_FILES_DIR / "temp" / "0" / self.partial_show_directory
-        else:
-            self.temp_show_directory = (
-                DOWNLOADED_FILES_DIR
-                / "temp"
-                / ExtendedPath.convert_to_path(datetime.now())
-                / self.partial_show_directory
-            )
-        self.episode_directory = self.directory / "Episode"
-
-    def check_number_of_seasons(self, number_of_seasons: int, path: ExtendedPath):
-        """Check if the number of season files matches the expected amount\n
-        If the number is bad clear out bad information and raise an error"""
-        file_count = path.file_count()
-        path.with_name("Season Bad Count").delete()
-        if number_of_seasons != file_count:
-            path.move(path.with_name("Season Bad Count"))
-            show_url = self.show_url()
-            raise Exception(
-                f"Error Downloading {show_url} Incorrect number of season files downloaded, expected: {number_of_seasons} but found: {file_count}"
-            )
-
     def get_id_from_show_url(self, show_url: str) -> None:
         self.show_id = re.strict_search(self.SHOW_URL_REGEX, show_url).group("show_id")
         self.show_info = Show().get_or_new(show_id=self.show_id, website=self.WEBSITE)[0]
 
-    def clean_up_download(self, browser: BrowserContext, p: Playwright, number_of_seasons: int, path: ExtendedPath):
-        # Close playwright because all downloads are done
-        p.stop()
-
-        # Verify number of files
-        self.check_number_of_seasons(number_of_seasons, path / "Season")
-
-        # Delete old files
-        self.directory.delete()
-
-        # Move new files
-        path.move(self.directory)
+    @cache  # Re-use the same browser instance to download everything
+    def playwright_browser(self, p: Playwright) -> BrowserContext:
+        return p.chromium.launch_persistent_context(
+            DOWNLOADED_FILES_DIR / "cookies/Chrome",
+            headless=False,
+            accept_downloads=True,
+            channel="chrome",
+        )
 
     @transaction.atomic
     def import_all(
@@ -193,9 +168,7 @@ class ScraperShowShared(ScraperShared, ABC):
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
         self.download_all(minimum_timestamp=minimum_info_timestamp)
-        self.update_show_info(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_season_info(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_episode_info(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_all(minimum_info_timestamp, minimum_modified_timestamp)
         self.set_weekly_update()
 
     def set_weekly_update(self) -> None:
@@ -209,7 +182,7 @@ class ScraperShowShared(ScraperShared, ABC):
             if not self.set_update_at(update_at):
                 break
 
-    def update_at_outdated(self, update_at: datetime) -> bool:
+    def is_update_at_outdated(self, update_at: datetime) -> bool:
         # If there isn't an update_at value set it
         if self.show_info.update_at is None:
             return True
@@ -226,15 +199,10 @@ class ScraperShowShared(ScraperShared, ABC):
 
     def set_update_at(self, update_at: datetime) -> bool:
         # If the old update_at value is outdated update it
-        if return_value := self.update_at_outdated(update_at):
+        if return_value := self.is_update_at_outdated(update_at):
             self.show_info.update_at = update_at
-            self.show_info.add_timestamps_and_save(self.directory)
-
+            self.show_info.save()
         return return_value
-
-    # TODO: Make this a required subclass
-    def check_for_updates(self) -> None:
-        pass
 
     @abstractmethod
     def episode_url(self, episode: Episode) -> str:
@@ -245,29 +213,14 @@ class ScraperShowShared(ScraperShared, ABC):
         pass
 
     @abstractmethod
-    def update_show_info(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def update_season_info(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def update_episode_info(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        pass
-
-    @abstractmethod
     def show_url(self) -> str:
+        pass
+
+    # TODO: Make this abstract once all subclasses have been updated
+    @abstractmethod
+    def update_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
         pass

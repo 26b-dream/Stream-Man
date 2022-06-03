@@ -29,14 +29,14 @@ class ExtendedTag(Tag):
         if len(output) == 0:
             raise StrictBeautifulSoupFaiure(f"No matches found for strict_select({selector})")
         else:
-            return output  # type: ignore - monkey patching causes Tag and ExtendedTag issues
+            return output
 
     def strict_select_one(self: Tag, selector: str) -> Tag:
         """Same as .select but it will raise an exception the number of matches is not 1"""
         output = self.select(selector)
         number_of_matches = len(output)
         if number_of_matches == 1:
-            return output[0]  # type: ignore - monkey patching causes Tag and ExtendedTag issues]
+            return output[0]
         else:
             raise StrictBeautifulSoupFaiure(
                 f"Wrong number of matches found for strict_select({selector}), found {number_of_matches}"

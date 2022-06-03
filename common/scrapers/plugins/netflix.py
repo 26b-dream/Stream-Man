@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+# Django
+from django.db import transaction
+
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response
     from typing import Any
+    from playwright.sync_api._generated import BrowserContext, Playwright
 
 # Standard Library
 import json
@@ -14,6 +18,7 @@ from datetime import datetime
 # Common
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
+from common.extended_path import ExtendedPath
 from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperShowShared
 
@@ -32,6 +37,32 @@ class Netflix(ScraperShowShared):
     FAVICON_URL = "https://assets.nflxext.com/ffe/siteui/common/icons/nficon2016.ico"
     JUSTWATCH_PROVIDER_IDS = [284]
 
+    def __init__(self, show_identifier: Show | str) -> None:
+        # Construct information from str (URL)
+        if isinstance(show_identifier, str):
+            self.get_id_from_show_url(show_identifier)
+
+        # Construct information from Show (database entry)
+        else:
+            self.show_info = show_identifier
+            self.show_id = show_identifier.show_id
+
+        self.partial_show_directory = ExtendedPath(self.WEBSITE) / "Show" / f"{self.show_id}"
+        self.directory = DOWNLOADED_FILES_DIR / self.partial_show_directory
+        # If a show has never been imported use a special static temporary directory
+        # This is done to cache information because some wbesites can require hundreds of page downloads for a single show
+        # If the download fails midway through using a static folder will allow it to resume
+        if not self.directory.exists():
+            self.temp_show_directory = DOWNLOADED_FILES_DIR / "temp" / "0" / self.partial_show_directory
+        else:
+            self.temp_show_directory = (
+                DOWNLOADED_FILES_DIR
+                / "temp"
+                / ExtendedPath.convert_to_path(datetime.now())
+                / self.partial_show_directory
+            )
+        self.episode_directory = self.directory / "Episode"
+
     # Example show URLs
     #   https://www.netflix.com/title/80156387
     SHOW_URL_REGEX = re.compile(r"https:\/\/www\.netflix\.com\/title\/*(?P<show_id>.*?)(?:\?|$)")
@@ -46,6 +77,43 @@ class Netflix(ScraperShowShared):
         return f"{self.DOMAIN}/watch/{episode.episode_id}"
 
     file_number = 0
+
+    @transaction.atomic
+    def import_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        self.download_all(minimum_timestamp=minimum_info_timestamp)
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_season(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_episode(minimum_info_timestamp, minimum_modified_timestamp)
+        self.set_weekly_update()
+
+    def clean_up_download(self, browser: BrowserContext, p: Playwright, number_of_seasons: int, path: ExtendedPath):
+        # Close playwright because all downloads are done
+        p.stop()
+
+        # Verify number of files
+        self.check_number_of_seasons(number_of_seasons, path / "Season")
+
+        # Delete old files
+        self.directory.delete()
+
+        # Move new files
+        path.move(self.directory)
+
+    def check_number_of_seasons(self, number_of_seasons: int, path: ExtendedPath):
+        """Check if the number of season files matches the expected amount\n
+        If the number is bad clear out bad information and raise an error"""
+        file_count = path.file_count()
+        path.with_name("Season Bad Count").delete()
+        if number_of_seasons != file_count:
+            path.move(path.with_name("Season Bad Count"))
+            show_url = self.show_url()
+            raise Exception(
+                f"Error Downloading {show_url} Incorrect number of season files downloaded, expected: {number_of_seasons} but found: {file_count}"
+            )
 
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
         if not self.directory.up_to_date(minimum_timestamp):
@@ -123,7 +191,14 @@ class Netflix(ScraperShowShared):
                 # Get rid of old information and insert new information
                 self.clean_up_download(browser, p, int(number_of_seasons * 2 + 1), self.temp_show_directory)
 
-    def update_show_info(
+    def update_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+
+    def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
@@ -146,7 +221,7 @@ class Netflix(ScraperShowShared):
             self.show_info.image_url = self.show_info.thumbnail_url
             self.show_info.add_timestamps_and_save(self.directory)
 
-    def update_season_info(
+    def update_season(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
@@ -177,7 +252,7 @@ class Netflix(ScraperShowShared):
                 season_info.name = season_info.show.name
                 season_info.add_timestamps_and_save(self.directory)
 
-    def update_episode_info(
+    def update_episode(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,

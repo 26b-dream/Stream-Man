@@ -16,6 +16,7 @@ import re
 import shutil
 import string
 from datetime import date, datetime
+from functools import cache
 from pathlib import Path
 
 
@@ -70,7 +71,7 @@ class ExtendedPath((type(Path()))):
         # File exists and is newer
         return True
 
-    def outdated(self, timestamp: datetime) -> bool:
+    def outdated(self, timestamp: Optional[datetime]) -> bool:
         """Check if a file does not exist or is outdated"""
         return not self.up_to_date(timestamp)
 
@@ -111,17 +112,22 @@ class ExtendedPath((type(Path()))):
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(self, destination)
 
-    def parse_html(self) -> BeautifulSoup:
+    def parsed_html(self, update: bool = False) -> BeautifulSoup:
+        """Read and parse an html file"""
         # Import bs4 here so there are no required external dependencies for ExtendedPath
         # Common
         from common.extended_bs4 import BeautifulSoup
 
-        """Read and parse an html file"""
-        return BeautifulSoup(self.read_bytes(), "lxml")
+        if not hasattr(self, "_parsed_json") or update:
+            self._parsed_html = BeautifulSoup(self.read_bytes(), "lxml")
+        return self._parsed_html
 
-    def parse_json(self) -> Any:
+    @cache
+    def parsed_json(self, update: bool = False) -> Any:
         """Read and parse a json file"""
-        return json.loads(self.read_bytes())
+        if not hasattr(self, "_parsed_json") or update:
+            self._parsed_json = json.loads(self.read_bytes())
+        return self._parsed_json
 
     def delete(self):
         """Delete a folder or a file without having to worry about which it is\n
@@ -202,13 +208,21 @@ class ExtendedPath((type(Path()))):
 
         return base_dir / "temp" / f"{temp_name}"
 
-    def remove_top_level_directory(self) -> ExtendedPath:
+    # TODO: This can probably be sped up
+    def remove_parent(self, parents_to_remove: int = 1) -> ExtendedPath:
         output = ExtendedPath()
         for i, x in enumerate(self.parts):
             # Ignore the first value to remove the top level directory
-            if i != 0:
+            if i > parents_to_remove:
                 # Rebuild path using the remaining parts
                 output = output / x
+        return output
+
+    def legalize(self) -> ExtendedPath:
+        output = ExtendedPath()
+        for x in self.parts:
+            # Rebuild path using the remaining parts
+            output = output / ExtendedPath.convert_to_path(x)
         return output
 
     def aware_mtime(self) -> datetime:

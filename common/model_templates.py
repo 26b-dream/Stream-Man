@@ -4,13 +4,15 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Optional
-    from common.extended_path import ExtendedPath
 
 # Standard Library
 from datetime import datetime
 
 # Django
 from django.db import models
+
+# Common
+from common.extended_path import ExtendedPath
 
 
 class ModelWithIdAndTimestamp(models.Model):
@@ -48,12 +50,16 @@ class ModelWithIdAndTimestamp(models.Model):
         # If other tests passed information is up to date
         return True
 
-    def add_timestamps_and_save(self, file: ExtendedPath) -> None:
+    def add_timestamps_and_save(self, file: ExtendedPath | datetime) -> None:
         """Add timestamps to a model object and save it"""
         self.add_timestamps(file)
         self.save()
 
-    def add_timestamps(self, file: ExtendedPath) -> None:
+    def add_timestamps(self, file: ExtendedPath | datetime) -> None:
         """Add timestamps to a model object"""
-        self.info_timestamp = file.aware_mtime()
+        if isinstance(file, ExtendedPath):
+            self.info_timestamp = file.aware_mtime()
+        else:
+            self.info_timestamp = file.astimezone()
+
         self.info_modified_timestamp = datetime.now().astimezone()
