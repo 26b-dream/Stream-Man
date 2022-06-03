@@ -1,0 +1,110 @@
+{% extends "htmx_modal_base.html" %}
+
+{% comment %} Most of this entire file is copied from htmx's "Model Dialogs in Bootstrap" example {% endcomment %}
+{% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+{% block modal_content %}
+    <style>
+        {% comment %} Used for the "Play Episode" text {% endcomment %}
+        .centered_text_on_image {
+            opacity: 75%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            -ms-transform: translate(-50%, -50%);
+            text-align: center;
+        }
+    </style>
+
+    {% comment %} Based on Bootstrap's "Modal components" example {% endcomment %}
+    {% comment %} See: https://getbootstrap.com/docs/5.0/components/modal/#modal-components {% endcomment %}
+    {% comment %} Add modal-xl to the class to make the modal bigger and prettier {% endcomment %}
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                {% comment %} Almost exactly the same as Bootstrap's "Breadcrumb" example {% endcomment %}
+                {% comment %} See: https://getbootstrap.com/docs/5.0/components/breadcrumb/ {% endcomment %}
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        {% comment %} TODO: Make real pages instead of just redirecting to the admin page {% endcomment %}
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'admin_show' episode.season.show.id %}">{{episode.season.show.name}}</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'admin_season' episode.season.id %}">{{episode.season.name}}</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'admin_episode' episode.id %}">{{episode.name}}</a>
+                        </li>
+                    </ol>
+                </nav>
+                {% comment %} Close modal X in the top right corner {% endcomment %}
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal()"></button>
+            </div>
+            <div class="modal-body">
+                {% comment %} Show an image of the episode and make it a link that opens the episode in a new tab {% endcomment %}
+                {% comment %} target="_blank" - Open episode in new tab so playlist stays open {% endcomment %}
+                {% comment %} This makes it easier to mark an episode as watched after I watch it {% endcomment %}
+                <a href="{{episode.url}}" target="_blank">
+                    <img src="{{ episode.image_url }}" alt="Episode Image" class="card-img-top">
+                    <div class="centered_text_on_image">
+                        <div class="btn btn-dark">Play Episode</div>
+                    </div>
+                </a>
+
+                {% comment %} Show information about the last time this episode was watched {% endcomment %}
+                <ul class="list-group">
+                    {% if episode.is_watched %}
+                        <li class="list-group-item">Last watched {{episode.last_watched}}</li>
+                        <li class="list-group-item">Watched {{episode.watch_count}} time(s)<br></li>
+                    {% else %}
+                        <li class="list-group-item">Never watched</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="modal-footer">
+                {% comment %} id="episode_form_{{ forloop.counter0 }}" - Allows the submit button to be outisde of the form {% endcomment %}
+                {% comment %} target="hidden_frame" - Allows form submission without reloading the page {% endcomment %}
+                <form action="{% url 'episodes:post_episode_watch_form' episode.id %}" method="post" target="hidden_frame" id="mark_episode_watched_{{ episode.id }}">
+                    {% csrf_token %}
+                    {{episode.watch_form}}
+                </form>
+                <button class="btn btn-success" onclick="episode_watched()">Watched</button>
+                <button class="btn btn-primary" onclick="prev_episode_modal()">Prev Episode</button>
+                <button type="button" class="btn btn-primary" onclick="next_episode_modal()">Next Episode</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    {% comment %} Custom scripts for moing between multiple modals {% endcomment %}
+    <script>
+        function next_episode_modal() {
+            // Get the button that is for this card
+            let value = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]');
+            // Get the button for the next card
+            let next_card = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]').parentElement.nextElementSibling.querySelector('div[hx-get]');
+            closeModal();
+            next_card.click();
+        }
+        function prev_episode_modal() {
+            // Get the button that is for this card
+            let value = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]');
+            // Get the button for the previous card
+            let prev_card = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]').parentElement.previousElementSibling.querySelector('div[hx-get]');
+            closeModal();
+            prev_card.click();
+        }
+        function episode_watched() {
+            // Mark the episode as watched
+            document.getElementById('mark_episode_watched_{{ episode.id }}').submit();
+            // Get the button that is for this card
+            let value = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]');
+            // Get the button for the next card
+            let next_card = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]').parentElement.nextElementSibling.querySelector('div[hx-get]');
+            closeModal();
+            next_card.click();
+        }
+    </script>
+{% endblock %}

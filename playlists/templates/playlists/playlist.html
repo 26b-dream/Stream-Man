@@ -1,0 +1,117 @@
+{% extends "card_base.html" %}
+{% comment %} TODO: This whole file needs to be split up better {% endcomment %}
+
+{% block h1 %}{% block title %} Playlist: {{ playlist.name }}{% endblock %}{% endblock %}
+
+{% block buttons %}
+{% comment %} Most of this is copied directly from Bootstrap's modal example {% endcomment %}
+    {% comment %} See: https://getbootstrap.com/docs/5.0/components/modal/ {% endcomment %}
+    <button hx-get="{% url 'playlists:modal_add_show' playlist.id %}" hx-target="#htmx_modal" hx-trigger="click"class="btn btn-primary">Add Show</button>
+    <button hx-get="{% url 'playlists:modal_remove_show' playlist.id %}" hx-target="#htmx_modal" hx-trigger="click"class="btn btn-primary">Remove Show</button>
+    <button hx-get="{% url 'playlists:modal_hide_season' playlist.id %}" hx-target="#htmx_modal" hx-trigger="click"class="btn btn-primary">Hide Season</button>
+    <button hx-post="{% url 'playlists:modal_filter_episodes' playlist.id %}" hx-target="#htmx_modal" hx-trigger="click"class="btn btn-primary" hx-vals='{{ playlist_filter_json }}'>Filter Episodes</button>
+    <button class="btn btn-primary" onclick="window.location.href='{% url 'playlists:post_update_shows' playlist.id %}';">Update Shows</button>
+{% endblock %}
+
+
+{% block cards %}
+{% comment %} Most of this is copied directly from Bootstrap's "Grid cards" example {% endcomment %}
+    {% comment %} See: https://getbootstrap.com/docs/5.0/components/card/#grid-cards {% endcomment %}
+        {% comment %} row Makes conten show as rows {% endcomment %}
+        {% comment %} row-cols-md-4 - Make cards go 4 wide to best fit the page {% endcomment %}
+        {% comment %} g-4 - Adds a small amount of vertical space between cards {% endcomment %}
+    <div class="row row-cols-1 row-cols-md-4 g-4" id='sortable'>
+        {% for episode in sorted_episodes %}
+            {% comment %} TODO: Add comment for this {% endcomment %}
+            <div class="col", id='card_col_{{ forloop.counter0 }}'>
+                {% comment %} Make the entire card a link to an htmx modal {% endcomment %}
+                {% comment %} Most of this is copied directly from htmx's "Modal Dialogs in Bootstrap" example {% endcomment %}
+                {% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+                <div id="modal"
+                class="card" {% comment %} Adds a nice border around the card {% endcomment %}
+                hx-get="{% url 'episodes:episode_modal' episode.id %}" {% comment %} Set the URL htmx links to {% endcomment %}
+                hx-target="#htmx_modal" {% comment %} Set a target so modal can be shown {% endcomment %}
+                _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop">
+                    {% comment %} Add show name and favicon at the top because the shwo name is the most important most of the time {% endcomment %}
+                    <h5 class="card-header"><img src="{{episode.scraper_instance.FAVICON_URL}}"  title="{{episode.scraper_instance.WEBSITE}}" loading="lazy" width="16" height="16"> {{ episode.season.show.name }}</h5>
+
+                    {% comment %} mb-0 removes extra bottom whitespace on the card {% endcomment %}
+                    <figure class="figure mb-0">
+                        <img src="{{ episode.thumbnail_url }}" class="card-img-top" loading="lazy">
+                        {% comment %} figcaption gives a nicely formatted string that takes up a minimum amount of space while displaying information {% endcomment %}
+                        <figcaption class="figure-caption">
+                            {% comment %} TODO: Should this be some sort of div list? {% endcomment %}
+                            <strong>Season: </strong>{{ episode.season.name }}<br>
+                            <strong>Episode: </strong>{{ episode.number }}. {{ episode.name }}<br>
+                            <strong>Date: </strong>{{ episode.release_date }}<br>
+                            <strong>Duration: </strong>{{ episode.duration_string }}<br>
+                            {% comment %} Buttosn to move episodes to make it easier to manage episodes on non-computer platforms {% endcomment %}
+                            <div class="row gx-0 ">
+                                {% comment %} TODO: There is probably a better way to override the main htmx modal on the card {% endcomment %}
+                                {% comment %} TODO: Currently it just sends a get to localhost after 10 years {% endcomment %}
+                                {% comment %} TODO: Problems may arise if you end up with a stupidly large queue from clicking every button {% endcomment %}
+                                <div class="col"><button hx-get="localhost" hx-trigger="click consume once delay:5256000m" class="btn move_start">⬆️</button></div>
+                                <div class="col"><button hx-get="localhost" hx-trigger="click consume once delay:5256000m" class="btn move_up">⬅️</button></div>
+                                <div class="col"><button hx-get="localhost" hx-trigger="click consume once delay:5256000m" class="btn move_down">➡️</button></div>
+                                <div class="col"><button hx-get="localhost" hx-trigger="click consume once delay:5256000m" class="btn move_bottom">⬇️</button></div>
+                            </div>
+                        </figcaption>
+                    </figure>
+                </div>
+            <div>
+        </div>
+    </div>
+        {% endfor %}
+        {% comment %} Allows cards to be organized {% endcomment %}
+        <script>
+            new Sortable(sortable, {
+                {% comment %} Makes the website somewhat more usable on phones {% endcomment %}
+                {% comment %} TODO: Make scrolling while dragging element work better {% endcomment %}
+                delay: 1000, // time in milliseconds to define when the sorting should start
+                delayOnTouchOnly: true, // only delay if user is using touch
+                scrollSensitivity: 200,
+                forceAutoscrollFallback: true,
+
+                {% comment %} Adds an ugly-ish color around cards as they are moved {% endcomment %}
+                chosenClass: 'bg-dark',
+
+                {% comment %} Disables the ugly ghost {% endcomment %}
+                {% comment %} Makes dragging feel much more natural {% endcomment %}
+                dragClass: 'sortable-dragging',
+
+              });
+
+             {% comment %} Buttosn to move episodes to make it easier to manage episodes on non-computer platforms {% endcomment %}
+             $(function () {
+                $("button.move_down").click(function () {
+                    card_node = $(this).parents(".col").parents(".col");
+                    next_card_node = card_node.next();
+                    next_card_node.after(card_node);
+                });
+                $("button.move_up").click(function () {
+                    card_node = $(this).parents(".col").parents(".col");
+                    prev_card_node = card_node.prev();
+                    prev_card_node.before(card_node);
+                });
+
+                $("button.move_start").click(function () {
+                    console.log("AS")
+                    $(this).parents(".col").parents(".col").prependTo("#sortable");
+
+                });
+
+                $("button.move_bottom").click(function () {
+                    console.log("AS")
+                    $(this).parents(".col").parents(".col").appendTo("#sortable");
+
+                });
+            });
+        </script>
+
+        {% comment %} Special style to disable the ugly semi-transparent dragging element that is normaally present {% endcomment %}
+        <style>
+            .sortable-dragging {
+                opacity: 0;
+            }
+        </style>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "htmx_modal_base.html" %}
+
+{% comment %} Most of this entire file is copied from htmx's "Model Dialogs in Bootstrap" example {% endcomment %}
+{% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+{% block modal_content %}
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="episode_order_modal_label">Filter Episodes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal()"></button>
+            </div>
+            <div class="modal-body">
+                {% comment %} id="episode_order_form" - Allows the submit button to be outisde of the form {% endcomment %}
+                <form action="{% url 'playlists:playlist' playlist.id %}" method="post" id="episode_order_form">
+                    {% csrf_token %}
+                    {% comment %} Group forms by the group value to make the form more organized {% endcomment %}
+                    {% regroup playlist_order_form by field.group as field_groups %}
+
+                    {% comment %} Go through each group one at a time to display just the information for that specific group {% endcomment %}
+                    {% for field_group in field_groups %}
+
+                        {% comment %} Devider is only needed after the first iteration otherwise a pointless one will be added at the top {% endcomment %}
+                        {% if not forloop.first %}<hr>{% endif %}
+
+                        {% comment %} Add the title of the field at the top to make it easier to read {% endcomment %}
+                        {{field_group.list.0.field.group_title}}
+
+                        {% comment %} Add every field to the form {% endcomment %}
+                        {% for field in field_group.list %}
+                            {{field}}
+                        {% endfor %}
+                    {% endfor %}
+                  </form>
+            </div>
+            <div class="modal-footer">
+                <input class="btn btn-primary" form="episode_order_form" type="submit" value="Sort Episodes">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}

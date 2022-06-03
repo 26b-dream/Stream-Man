@@ -1,0 +1,34 @@
+{% extends "htmx_modal_base.html" %}
+
+{% comment %} Most of this entire file is copied from htmx's "Model Dialogs in Bootstrap" example {% endcomment %}
+{% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+{% block modal_content %}
+    {% comment %} class="modal-lg" - Makes modal large enough where most URLs will fit in a single line {% endcomment %}
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="add_show_modal_label">Import Queue</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal()"></button>
+            </div>
+            <div class="modal-body">
+                {% comment %} class="row" - Makes each URL text box have its own line {% endcomment %}
+                {% comment %} id="playlist_que_form_set" - Allows the submit button to be outisde of the form {% endcomment %}
+                <form action="{% url 'playlists:post_playlist_que_formset' playlist.id %}" method="post" class="row" id="playlist_que_form_set">
+                    {% csrf_token %}
+                    {{ playlist_que_form_set.management_form }}
+                    {% for entry in playlist_que_form_set %}
+                        {% for field in entry %}
+                            {{ field }}
+                        {% endfor %}
+                    {% endfor %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                {% comment %} name="import_queue" and name="save_queue" - Gives a value to post so it can be decided if queue should be imported {% endcomment %}
+                <input class="btn btn-primary" form="playlist_que_form_set" type="submit" name="save_que" value="Save Queue">
+                <input class="btn btn-primary" form="playlist_que_form_set" type="submit" name="import_queue" value="Import Queue">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}

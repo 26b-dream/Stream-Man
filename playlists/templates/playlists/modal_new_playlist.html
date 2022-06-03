@@ -1,0 +1,25 @@
+{% extends "htmx_modal_base.html" %}
+
+{% comment %} Most of this entire file is copied from htmx's "Model Dialogs in Bootstrap" example {% endcomment %}
+{% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+{% block modal_content %}
+	<div class="modal-dialog" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Playlist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal()"></button>
+            </div>
+            <div class="modal-body">
+                {% comment %} id="episode_order_form" - Allows the submit button to be outisde of the form {% endcomment %}
+                <form action="{% url 'playlists:post_new_playlist_form' %}" method="post" id="new_playlist_form">
+                    {% csrf_token %}
+                    {{ new_playlist_form }}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <input class="btn btn-primary" form="new_playlist_form" type="submit" value="Create Playlist">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+	</div>
+{% endblock %}

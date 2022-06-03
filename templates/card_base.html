@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en" class="h-100">
+
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %} TODO: Add Title {% endblock %}</title>
+
+        {% comment %} Bootstrap {% endcomment %}
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" title="Normal">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+
+        {% comment %} jQuery {% endcomment %}
+        <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+
+        {% comment %} Better drag and drop {% endcomment %}
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+        {% comment %} HTMX {% endcomment %}
+        <script src="https://unpkg.com/htmx.org@1.6.1" ></script>
+
+        {% comment %} This script was copied from htmx's "Model Dialogs in Bootstrap" example {% endcomment %}
+        {% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+        <script>
+            function closeModal() {
+                var container = document.getElementById("htmx_modal")
+                var backdrop = document.getElementById("modal-backdrop")
+                var modal = document.getElementById("modal")
+
+                modal.classList.remove("show")
+                backdrop.classList.remove("show")
+
+                setTimeout(function() {
+                    container.removeChild(backdrop)
+                    container.removeChild(modal)
+                }, 200)
+            }
+        </script>
+    </head>
+
+    {% comment %} hx-headers - Allows htmx to work properly {% endcomment %}
+    <body class="d-flex flex-column h-100" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% comment %} Dummy iframe used to rediret submissions so forms can be submitted without refreshing the page {% endcomment %}
+        <iframe name="hidden_frame" style="display:none;"></iframe>
+
+        {% comment %} Dummy modal used by htmx {% endcomment %}
+        <div id="htmx_modal"></div>
+
+        {% comment %} Header mostly copied from the official bootstrap templates, can't remember which one {% endcomment %}
+        <header class="p-3 bg-dark text-white">
+            <div class="container">
+                <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+                    <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
+                        <li><a href="{% url 'playlists:index' %}" class="nav-link px-2 text-white">Playlists</a></li>
+                        <li><a href="{% url 'shows:show_index' %}" class="nav-link px-2 text-white">Shows</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+
+        {% comment %} Main mostly copied from the official bootstrap templates, can't remember which one {% endcomment %}
+        <main class="flex-shrink-0">
+            <div class="container">
+                <h1>{% block h1 %}TODO: Add h1{% endblock %}</h1>
+                {# Buttons to do things to the playlist, must be grouped seperate from divs otherwise there will be line brekas between the buttons #}
+                <p>{% block buttons %}{% endblock %}</p>
+                {% block cards %}{% endblock %}
+            </div>
+        </main>
+        {% comment %} Required bootstrap js {% endcomment %}
+    </body>
+</html>

@@ -1,0 +1,7 @@
+{% comment %} Small template to reduce redundant html for modals {% endcomment %}
+{% comment %} Code is taken from the official htmx modal page https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+{% comment %} TODO: Find a fix for closing modals by clicking on the black background {% endcomment %}
+<div id="modal-backdrop" class="modal-backdrop fade show" style="display:block;" onclick="closeModal()"></div>
+<div id="modal" class="modal fade show" tabindex="-1" style="display:block;">
+    {% block modal_content %}{% endblock %}
+</div>

@@ -1,0 +1,41 @@
+{% extends "card_base.html" %}
+
+{% block h1 %}{% block title %} All Playlists {% endblock %}{% endblock %}
+{% comment %} Dummy iframe used to redirect make post requests not refresh the page {% endcomment %}
+
+{% block buttons %}
+    {% comment %} Most of this is copied directly from htmx's "Modal Dialogs in Bootstrap" example {% endcomment %}
+    {% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+    <button hx-get="{% url 'playlists:modal_new_playlist' %}" 
+            hx-target="#htmx_modal"
+            hx-trigger="click"
+            class="btn btn-primary"
+            _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop">
+        Create New Playlist
+    </button>
+{% endblock %}
+
+{% block cards %}
+    {% comment %} Most of this is copied directly from Bootstrap's "Grid cards" example {% endcomment %}
+    {% comment %} See: https://getbootstrap.com/docs/5.0/components/card/#grid-cards {% endcomment %}
+    {% comment %} md-2 changed to md-4 to allow 4 cards side by side instead of 2 {% endcomment %}
+    <div class="row row-cols-1 row-cols-md-4 g-4">
+        {% for playlist in playlists %}
+            {% comment %} Next 2 lines are copied from Bootstrap's "Grid cards" example {% endcomment %}
+            {% comment %} See: https://getbootstrap.com/docs/5.0/components/card/#grid-cards {% endcomment %}
+            <div class="col">
+                <div class="card">
+                    {% comment %} class="stretched-link" - makes the whole card a link to the playlist {% endcomment %}
+                    <a href="{% url 'playlists:playlist' playlist.id %}" class="stretched-link"></a>
+                    <div class="card-header">
+                        {{ playlist.name }}
+                    </div>
+                    <div class="card-body">
+                        {% comment %} Just for fun pick a random image to use as the picture for the playlist {% endcomment %}
+                        <img src="{{ playlist.random_episode.image_url }}" class="card-img-top" loading="lazy" />
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

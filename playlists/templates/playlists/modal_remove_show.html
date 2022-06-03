@@ -1,0 +1,47 @@
+{% extends "htmx_modal_base.html" %}
+{% comment %} ! REMOVE THIS BEFORE CERIFICATION {% endcomment %}
+
+{% comment %} Most of this entire file is copied from htmx's "Model Dialogs in Bootstrap" example {% endcomment %}
+{% comment %} See: https://htmx.org/examples/modal-bootstrap/ {% endcomment %}
+{% block modal_content %}
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="remove_show_modal_label">Remove Show</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal()"></button>
+            </div>
+            <div class="modal-body">
+                {% comment %} id="remove_show_formset" - Allows the submit button to be outisde of the form {% endcomment %}
+                <form action="{% url 'playlists:post_remove_show_formset' playlist.id %}" method="post" id="remove_show_formset">
+                    {% csrf_token %}
+                    {{ remove_show_formset.management_form }}
+                    {% for form in remove_show_formset %}
+                        {# It's easiest to insert hidden and visible fields individually #}
+                        {% for hidden in form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+                        {% for field in form %}
+                            {% if field.name == "DELETE" %}
+                                {# This div and the label just formats the information so it's nice and easy to read #}
+                                <div class="form-check">
+                                    {% comment %} Override the class so it matches the bootstrap example {% endcomment %}
+                                    {% comment %} See: https://getbootstrap.com/docs/5.0/forms/checks-radios/ {% endcomment %}
+                                    {{field}}
+                                    <label class="form-check-label" for="flexCheckChecked">
+                                            {% comment %} Include the website here because you can have the same show from different websites {% endcomment %}
+                                            {% comment %} TODO: Make shows that are completely watched look different than shows with unwatched episodes {% endcomment %}
+                                            <img src="{{form.instance.show.scraper_instance.FAVICON_URL}}"  title="{{form.instance.show.website}}" loading="lazy" width="16" height="16"> {{form.instance.show.name}}
+                                        </label>
+                                </div>
+                                {%endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <input class="btn btn-danger" form="remove_show_formset" type="submit" value="Remove Shows">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
