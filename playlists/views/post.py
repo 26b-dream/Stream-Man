@@ -104,7 +104,7 @@ def update_shows(request: HttpRequest, playlist_id: int) -> HttpResponseRedirect
         print(f"Updating: {show}")
         show.scraper_instance().import_all(minimum_info_timestamp=show.update_at)
 
-    oldest_show = Show.objects.order_by("info_modified_timestamp").first()
+    oldest_show = Show.objects.order_by("info_timestamp").first()
     if oldest_show:
         # This value is set to always start on July 1st as a starting point
         days = (date.today() - oldest_show.info_timestamp.date()).days
