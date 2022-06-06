@@ -204,6 +204,7 @@ class ScraperShowShared(ScraperShared, ABC):
             self.show_info.save()
         return return_value
 
+    @cache  # Values should never change
     @abstractmethod
     def episode_url(self, episode: Episode) -> str:
         pass
@@ -212,6 +213,7 @@ class ScraperShowShared(ScraperShared, ABC):
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
         pass
 
+    @cache  # Values should never change
     @abstractmethod
     def show_url(self) -> str:
         pass
