@@ -87,7 +87,8 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
                 DOWNLOADED_FILES_DIR / "cookies/Chrome", headless=False, accept_downloads=True, channel="chrome"
             )
             page = browser.new_page()
-            page.goto(self.calendar_url(date), wait_until="networkidle")
+            # networkidle just hangs sometimes so try load
+            page.goto(self.calendar_url(date), wait_until="load")
 
             # Download file
             # TODO: File verification
