@@ -192,7 +192,7 @@ class ScraperShowShared(ScraperShared, ABC):
             return True
 
         # If the new update_at value is newer update the old one
-        if update_at < self.show_info.update_at:
+        if update_at > self.show_info.update_at:
             return True
 
         return False
@@ -218,7 +218,6 @@ class ScraperShowShared(ScraperShared, ABC):
     def show_url(self) -> str:
         pass
 
-    # TODO: Make this abstract once all subclasses have been updated
     @abstractmethod
     def update_all(
         self,
