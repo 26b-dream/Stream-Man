@@ -32,7 +32,7 @@ class NetflixBase:
     DOMAIN = "https://www.netflix.com"
     # Example show URLs
     #   https://www.netflix.com/title/80156387
-    SHOW_URL_REGEX = re.compile(r"https:\/\/www\.netflix\.com\/title\/*(?P<show_id>.*?)(?:\?|$)")
+    SHOW_URL_REGEX = re.compile(r"https?:\/\/www\.netflix\.com\/title\/*(?P<show_id>.*?)(?:\?|$)")
     # Example episode URLs
     #   https://www.netflix.com/watch/80156389
     EPISODE_URL_REGEX = re.compile(r"https:\/\/www\.netflix\.com\/watch\/*(?P<show_id>.*?)(?:\/|$)")
@@ -457,7 +457,7 @@ class NetflixShow(NetflixBase, ScraperShowShared):
 
 
 class NetflixUpdate(NetflixBase, ScraperUpdateShared):
-    JUSTWATCH_PROVIDER_IDS = [384]
+    JUSTWATCH_PROVIDER_IDS = [8]
 
     def justwatch_update(self, justwatch_entry: dict[str, Any], date: datetime) -> None:
         justwatch_url = justwatch_entry["offers"][0]["urls"]["standard_web"]
