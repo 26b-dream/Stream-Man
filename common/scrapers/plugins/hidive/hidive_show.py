@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from playwright.sync_api._generated import Page, Playwright
+    from playwright.sync_api._generated import Playwright
     from typing import Any, Optional
     from common.extended_path import ExtendedPath
 # Standard Library
@@ -13,9 +13,7 @@ from functools import cache
 
 # Third Party
 from bs4 import BeautifulSoup
-
-# Django
-from django.db import transaction
+from playwright.sync_api._generated import Page
 
 # Common
 import common.extended_re as re
@@ -137,7 +135,7 @@ class HidiveShow(ScraperShowShared, HidiveBase):
         show_html_path = self.path_from_url(self.show_url())
         if show_html_path.outdated(minimum_timestamp):
             page = self.playwright_browser(playwright).new_page()
-            page.goto(self.show_url(), wait_until="networkidle")
+            self.go_to_page_logged_in(page, self.show_url())
 
             if not self.show_is_valid(page):
                 raise Exception(f"Invalid page {self.show_url()}")
