@@ -170,15 +170,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 # TODO: Verification
                 episode_html_path.write(page.content())
 
-    @transaction.atomic
-    def import_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.download_all(minimum_timestamp=minimum_info_timestamp)
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_all(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -199,7 +190,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
             self.show_info.thumbnail_url = parsed_json["image"]
             # TODO: Is there a smaller image I can use?
             self.show_info.image_url = self.show_info.thumbnail_url
-            self.set_weekly_update()
             self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
 
         self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
