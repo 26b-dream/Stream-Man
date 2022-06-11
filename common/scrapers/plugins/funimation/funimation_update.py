@@ -36,7 +36,7 @@ class FunimationUpdate(ScraperUpdateShared, FunimationBase):
 
     def justwatch_update(self, justwatch_entry: dict[str, Any], date: datetime) -> None:
         justwatch_url = justwatch_entry["offers"][0]["urls"]["standard_web"]
-        show_id = re.strict_search(self.SHOW_URL_REGEX, justwatch_url).group("show_id")
+        show_id = re.strict_search(self.EPISODE_URL_REGEX, justwatch_url).group("show_id")
         show = Show.objects.filter(website=self.WEBSITE, show_id=show_id)
 
         # If there is a show entry make sure the information is newer than the JustWatch entry

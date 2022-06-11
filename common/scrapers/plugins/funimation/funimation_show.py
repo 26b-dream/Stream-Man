@@ -31,13 +31,11 @@ class FunimationShow(FunimationBase, ScraperShowShared):
     DOMAIN = "https://www.funimation.com"
     FAVICON_URL = "https://static.funimation.com/static/img/favicon.ico"
 
-    # Example episode URLs
-    #   https://www.funimation.com/v/aria/that-wonderful-miracle
-    EPISODE_URL_REGEX = re.compile(r"https:\/\/www\.funimation\.com\/v\/*(?P<show_id>.*?)\/*(?P<episode_id>.*)")
-
+    @cache
     def show_url(self) -> str:
         return f"{self.DOMAIN}/shows/{self.show_id}"
 
+    @cache
     def episode_url(self, episode: Episode) -> str:
         return f"{self.DOMAIN}/v/{self.show_id}/{episode.episode_id}"
 
