@@ -33,7 +33,7 @@ from shows.models import Episode, Season, Show
 
 # Unknown
 
-
+# TODO: Hulu can actually be entirely scraped from the API without logging in so this can be hugely simplified
 class HuluShow(ScraperShowShared, HuluBase):
     FAVICON_URL = "https://assetshuluimcom-a.akamaihd.net/h3o/icons/favicon.ico.png"
     JUSTWATCH_PROVIDER_IDS = [430]
@@ -87,51 +87,6 @@ class HuluShow(ScraperShowShared, HuluBase):
     def go_to_page_logged_in(self, page: Page, url: str) -> None:
         page.goto(url, wait_until="networkidle")
         self.login_if_needed(page, url)
-
-    @cache  # Values only change when show_html file changes
-    def show_html_season_urls(self) -> list[str]:
-        pass
-        # path = self.path_from_url(self.show_url())
-        # if seasons := path.parsed_html().select("ul[class*='nav-tabs'] > li > a"):
-        #     return [partial_url.strict_get("href") for partial_url in seasons]
-        # # Shows with only a single season don't have the season selector
-        # # For these shows just return the original show URL
-        # else:
-        #     return [self.show_url()]
-
-    @cache  # Values only change when show_html file changes
-    def season_html_episode_urls(self, season_path: ExtendedPath) -> list[str]:
-        pass
-        # episodes_div = season_path.parsed_html().strict_select("div[class='slick-track']")[0]
-        # episodes = episodes_div.strict_select("div[class*='slick-slide'] a")
-        # return [partial_url.strict_get("data-playurl") for partial_url in episodes]
-
-    @cache  # Values only change when show_html file changes
-    def json_from_html_file(self, path: ExtendedPath) -> dict[str, Any]:
-        pass
-        # json_string = path.parsed_html().strict_select_one("script[type='application/ld+json']").text
-        # return json.loads(json_string)
-
-    def show_is_valid(self, parsed_show: Page | BeautifulSoup) -> bool:
-        pass
-        # # For simplicity convert PlayWright instances to BeautifulSoup instances
-        # # This makes it easier to verify pages before and after downloading
-        # # This is useful if verification requirements change
-        # if isinstance(parsed_show, Page):
-        #     parsed_show = BeautifulSoup(parsed_show.content(), "html.parser")
-
-        # # Check if there are multipel seasons
-        # if season_selector := parsed_show.select_one("ul[class*='nav-tabs']"):
-        #     first_season_url = season_selector.strict_select("a")[0].strict_get("href")
-        #     partial_show_url = self.show_url().removeprefix(f"{self.DOMAIN}")
-
-        #     # Check if this is the first season
-        #     # This is done in case the URL for the second season was used instead of the first
-        #     if first_season_url != partial_show_url:
-        #         return False
-
-        # # All verifications passed assume file is good
-        # return True
 
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         show_html_path = self.path_from_url(self.show_url())
