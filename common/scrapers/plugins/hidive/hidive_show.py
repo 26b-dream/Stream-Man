@@ -17,17 +17,14 @@ from playwright.sync_api._generated import Page
 
 # Common
 import common.extended_re as re
-from common.extended_playwright import sync_playwright
 from common.scrapers.plugins.hidive.hidive_base import HidiveBase
 from common.scrapers.shared import ScraperShowShared
 
 # Config
-# Unknown
 from config.config import HIDIVESecrets
 
 # Apps
-# Shows
-from shows.models import Episode, Season, Show
+from shows.models import Episode, Season
 
 
 class HidiveShow(ScraperShowShared, HidiveBase):
@@ -40,14 +37,17 @@ class HidiveShow(ScraperShowShared, HidiveBase):
     #   https://www.hidive.com/movies/initial-d-legend-1-awakening
     SHOW_URL_REGEX = re.compile(r"^(?:https?:\/\/www\.hidive\.com)?\/(?:tv|movies)\/(?P<show_id>.*)")
 
+    @cache  # Values should never change
     def show_url(self) -> str:
         # This isn't the actual URL for movies, but it works
         return f"{self.DOMAIN}/tv/{self.show_id}"
 
+    @cache  # Values should never change
     def season_url(self, season_id: str) -> str:
         # This isn't the actual URL for movies, but it works
         return f"{self.DOMAIN}/tv/{season_id}"
 
+    @cache  # Values should never change
     def episode_url(self, episode: Episode) -> str:
         return f"{self.DOMAIN}/stream/{episode.season.season_id}/{episode.episode_id}/"
 
