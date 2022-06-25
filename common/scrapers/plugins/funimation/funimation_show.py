@@ -47,10 +47,6 @@ class FunimationShow(FunimationBase, ScraperShowShared):
     def season_html_path(self, season: str) -> ExtendedPath:
         return self.path_from_url(f"{self.show_url()}/{season}", ".html")
 
-    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
-
     def download_show_response(self, response: Response) -> None:
         if "v2/shows" in response.url:
             # There is no direct path to the json file form the html file

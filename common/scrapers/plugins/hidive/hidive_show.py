@@ -40,16 +40,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
     #   https://www.hidive.com/movies/initial-d-legend-1-awakening
     SHOW_URL_REGEX = re.compile(r"^(?:https?:\/\/www\.hidive\.com)?\/(?:tv|movies)\/(?P<show_id>.*)")
 
-    def __init__(self, show_identifier: Show | str) -> None:
-        # Construct information from str (URL)
-        if isinstance(show_identifier, str):
-            self.get_id_from_show_url(show_identifier)
-
-        # Construct information from Show (database entry)
-        else:
-            self.show_info = show_identifier
-            self.show_id = show_identifier.show_id
-
     def show_url(self) -> str:
         # This isn't the actual URL for movies, but it works
         return f"{self.DOMAIN}/tv/{self.show_id}"
@@ -126,10 +116,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
 
         # All verifications passed assume file is good
         return True
-
-    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
 
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         show_html_path = self.path_from_url(self.show_url())

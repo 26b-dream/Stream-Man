@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING, Optional, overload
 # Standard Library
 from functools import cache
 
+# Third Party
+from playwright.sync_api import sync_playwright
+
 if TYPE_CHECKING:
     from typing import Any, Literal, Pattern
 
@@ -209,13 +212,17 @@ class ScraperShowShared(ScraperShared, ABC):
     def episode_url(self, episode: Episode) -> str:
         pass
 
-    @abstractmethod
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        pass
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
     @cache  # Values should never change
     @abstractmethod
     def show_url(self) -> str:
+        pass
+
+    @abstractmethod
+    def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         pass
 
     @abstractmethod

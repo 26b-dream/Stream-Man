@@ -135,10 +135,6 @@ class NetflixShow(NetflixBase, ScraperShowShared):
             if season.get("episodes"):
                 return (season_id, season)
 
-    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
-
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         html_path = self.path_from_url(self.show_url())
 

@@ -90,10 +90,6 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
     def season_json_path(self, season: str) -> ExtendedPath:
         return self.path_from_url(f"{self.show_url()}/{season}", ".json")
 
-    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
-
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         show_html_path = self.path_from_url(self.show_url())
         show_json_path = self.path_from_url(self.show_url(), ".json")
