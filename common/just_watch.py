@@ -31,8 +31,8 @@ class JustWatch:
             return self.NEW_DIR / ExtendedPath.convert_to_path(parsed_date).with_suffix(".json")
 
     def download(self) -> None:
-        # If file already exists nothing needs to be downloaded
-        if self.file_path(self.date).exists():
+        # If file already exists and it is not the temp file nothing needs to be done
+        if self.file_path(self.date).exists() and self.file_path(self.date) != self.NEW_DIR / "temp.json":
             return
         # Download file
         with urllib.request.urlopen(self.url()) as response:
