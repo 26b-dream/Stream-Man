@@ -16,7 +16,6 @@ import re
 import shutil
 import string
 from datetime import date, datetime
-from functools import cache
 from pathlib import Path
 
 
@@ -122,7 +121,6 @@ class ExtendedPath((type(Path()))):
             self._parsed_html = BeautifulSoup(self.read_bytes(), "lxml")
         return self._parsed_html
 
-    @cache
     def parsed_json(self, update: bool = False) -> Any:
         """Read and parse a json file"""
         if not hasattr(self, "_parsed_json") or update:
