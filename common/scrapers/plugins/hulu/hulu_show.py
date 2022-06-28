@@ -46,7 +46,7 @@ class HuluShow(ScraperShowShared, HuluBase):
 
     @cache
     def episode_url(self, episode: Episode) -> str:
-        return f"{self.DOMAIN}/watch/{episode.id}/"
+        return f"{self.DOMAIN}/watch/{episode.episode_id}/"
 
     def login(self, page: Page) -> None:
         page.goto("https://auth.hulu.com/web/login", wait_until="networkidle")
@@ -170,13 +170,6 @@ class HuluShow(ScraperShowShared, HuluBase):
                         break
             # json_path.write_json(response.json())
 
-    def update_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -189,8 +182,9 @@ class HuluShow(ScraperShowShared, HuluBase):
             self.show_info.description = parsed_show_json["details"]["entity"]["description"]
 
             base_img_url = parsed_show_json["artwork"]["detail.horizontal.hero"]["path"]
-            self.show_info.thumbnail_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
+            # These image resolutions are used by Hulu and shoulod already be generated
             self.show_info.image_url = base_img_url + '&operations=[{"resize":"1920x1920|max"},{"format":"webp"}]'
+            self.show_info.thumbnail_url = base_img_url + '&operations=[{"resize":"1024x1024|max"},{"format":"webp"}]'
             self.show_info.show_id_2 = parsed_show_json["id"]
             self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
 
@@ -201,6 +195,7 @@ class HuluShow(ScraperShowShared, HuluBase):
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
+        print(minimum_modified_timestamp)
         show_json_path = self.path_from_url(self.show_url(), ".json")
         for season in show_json_path.parsed_json()["components"][0]["items"]:
             season_name = season["name"]
@@ -216,7 +211,7 @@ class HuluShow(ScraperShowShared, HuluBase):
                 # Shows do not have specific images so just keep it blank
                 season_info.add_timestamps_and_save(season_json_path)
 
-            self.update_episodes(season_info, season_json_path, minimum_info_timestamp, minimum_info_timestamp)
+            self.update_episodes(season_info, season_json_path, minimum_info_timestamp, minimum_modified_timestamp)
 
     def update_episodes(
         self,
@@ -231,6 +226,7 @@ class HuluShow(ScraperShowShared, HuluBase):
             episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
 
             # If information is upt to date nothing needs to be done
+            print(minimum_modified_timestamp)
             if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                 return
 
@@ -240,7 +236,8 @@ class HuluShow(ScraperShowShared, HuluBase):
             # TODO: Find better image sizes
             base_img_url = episode["artwork"]["video.horizontal.hero"]["path"]
             episode_info.thumbnail_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
-            episode_info.image_url = season_info.thumbnail_url
+            episode_info.image_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
+            print(episode_info.image_url)
             episode_info.release_date = datetime.strptime(episode["premiere_date"], "%Y-%m-%dT%H:%M:%SZ").astimezone()
             episode_info.number = episode["number"]
             episode_info.duration = episode["duration"]
