@@ -35,7 +35,6 @@ from shows.models import Episode, Season
 
 class HuluShow(ScraperShowShared, HuluBase):
     FAVICON_URL = "https://assetshuluimcom-a.akamaihd.net/h3o/icons/favicon.ico.png"
-    JUSTWATCH_PROVIDER_IDS = [430]
 
     SHOW_URL_REGEX = re.compile(r"^(?:https:\/\/www\.hulu\.com)?\/series\/(?P<show_id>.*)-.*-.*-.*-.*-.*$")
 
