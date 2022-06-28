@@ -126,6 +126,7 @@ class ScraperUpdateShared(ScraperShared, ABC):
     def check_for_updates(self, earliest_date: Optional[date] = None) -> None:
         ...
 
+    @abstractmethod
     def justwatch_update(self, justwatch_entry: dict[str, Any], date: datetime) -> None:
         ...
 
@@ -185,7 +186,7 @@ class ScraperShowShared(ScraperShared, ABC):
             if not self.set_update_at(update_at):
                 break
 
-    def is_update_at_outdated(self, update_at: datetime) -> bool:
+    def update_at_is_outdated(self, update_at: datetime) -> bool:
         # If there isn't an update_at value set it
         if self.show_info.update_at is None:
             return True
@@ -202,7 +203,7 @@ class ScraperShowShared(ScraperShared, ABC):
 
     def set_update_at(self, update_at: datetime) -> bool:
         # If the old update_at value is outdated update it
-        if return_value := self.is_update_at_outdated(update_at):
+        if return_value := self.update_at_is_outdated(update_at):
             self.show_info.update_at = update_at
             self.show_info.save()
         return return_value
@@ -210,21 +211,20 @@ class ScraperShowShared(ScraperShared, ABC):
     @cache  # Values should never change
     @abstractmethod
     def episode_url(self, episode: Episode) -> str:
-        pass
+        ...
 
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        pass
-        # with sync_playwright() as playwright:
-        #     self.download_show(playwright, minimum_timestamp)
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
     @cache  # Values should never change
     @abstractmethod
     def show_url(self) -> str:
-        pass
+        ...
 
     @abstractmethod
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
-        pass
+        ...
 
     def update_all(
         self,
@@ -239,4 +239,4 @@ class ScraperShowShared(ScraperShared, ABC):
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        pass
+        ...
