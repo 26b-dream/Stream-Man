@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# Standard Library
-from unicodedata import name
-
 if TYPE_CHECKING:
     from typing import Any, Optional
 
@@ -12,7 +9,6 @@ if TYPE_CHECKING:
 from datetime import date, datetime
 
 # Common
-import common.extended_re as re
 from common.scrapers.plugins.hulu.hulu_base import HuluBase
 from common.scrapers.plugins.hulu.hulu_show import HuluShow
 from common.scrapers.shared import ScraperUpdateShared

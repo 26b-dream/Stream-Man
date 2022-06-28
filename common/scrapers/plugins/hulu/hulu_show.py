@@ -35,7 +35,6 @@ from shows.models import Episode, Season
 
 class HuluShow(ScraperShowShared, HuluBase):
     FAVICON_URL = "https://assetshuluimcom-a.akamaihd.net/h3o/icons/favicon.ico.png"
-
     SHOW_URL_REGEX = re.compile(r"^(?:https:\/\/www\.hulu\.com)?\/series\/(?P<show_id>.*)-.*-.*-.*-.*-.*$")
 
     @cache
@@ -46,30 +45,27 @@ class HuluShow(ScraperShowShared, HuluBase):
     def episode_url(self, episode: Episode) -> str:
         return f"{self.DOMAIN}/watch/{episode.episode_id}/"
 
-    def login(self, page: Page) -> None:
-        page.goto("https://auth.hulu.com/web/login", wait_until="networkidle")
-
-        # If there is the accept cookies button click it
-        # This is requried for clicking the button to login
-        if page.click_if_exists("button >> text=Accept"):
-            page.wait_for_load_state("networkidle")
-
-        # Login
-        page.type("input[data-automationid='email-field']", HuluSecrets.EMAIL)
-        page.type("input[data-automationid='password-field']", HuluSecrets.PASSWORD)
-        page.click("button[data-automationid='login-button']")
-
-        # After logging in there is a redirect to choose the user
-        page.wait_for_url("{self.DOMAIN}/profiles?next=/", wait_until="networkidle")
-        page.click(f"a[aria-label='Switch profile to {HuluSecrets.NAME}']")
-
-        # Final redirect after choosing the user
-        page.wait_for_url("https://www.hulu.com/hub/home", wait_until="networkidle")
-
     def login_if_needed(self, page: Page, url: str) -> None:
         # Login
         if page.query_selector("span:has-text('Log In')"):
-            self.login(page)
+            page.goto("https://auth.hulu.com/web/login", wait_until="networkidle")
+
+            # If there is the accept cookies button click it
+            # This is requried for clicking the button to login
+            if page.click_if_exists("button >> text=Accept"):
+                page.wait_for_load_state("networkidle")
+
+            # Login
+            page.type("input[data-automationid='email-field']", HuluSecrets.EMAIL)
+            page.type("input[data-automationid='password-field']", HuluSecrets.PASSWORD)
+            page.click("button[data-automationid='login-button']")
+
+            # After logging in there is a redirect to choose the user
+            page.wait_for_url("{self.DOMAIN}/profiles?next=/", wait_until="networkidle")
+            page.click(f"a[aria-label='Switch profile to {HuluSecrets.NAME}']")
+
+            # Final redirect after choosing the user
+            page.wait_for_url("https://www.hulu.com/hub/home", wait_until="networkidle")
             page.goto(url, wait_until="networkidle")
 
         # Choose user
@@ -116,6 +112,7 @@ class HuluShow(ScraperShowShared, HuluBase):
 
     def download_seasons(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         # If all of the season files are up to date nothing needs to be done
+        # Returning early here prevents from opening the webpage pointlessly
         if self.season_files_up_to_date(minimum_timestamp):
             return
 
@@ -155,18 +152,22 @@ class HuluShow(ScraperShowShared, HuluBase):
                     season_selection_list = page.query_selector_all("ul[data-automationid='detailsdropdown-list'] > li")
 
     def download_season_response(self, response: Response) -> None:
+        # All json files include this in the URL
         if "content/v5/hubs/series/" in response.url:
+            # Check if this is a season specific URL
             if "season" in response.url:
                 season_json_path = self.season_path(response.json()["name"], ".json")
                 season_json_path.write_json(response.json())
+            # Other URLs are for the show itself
             else:
-                # Determine which season is being stored with the show
+                # The initial season information is stored with the show information so it must be extracted
+                # All seasons are listed but only the initial season has an items entry
                 for season in response.json()["components"][0]["items"]:
+                    # If if has an items entry the initials season is found
                     if season["items"]:
                         season_json_path = self.season_path(season["name"], ".json")
                         season_json_path.write_json(season)
                         break
-            # json_path.write_json(response.json())
 
     def update_show(
         self,
