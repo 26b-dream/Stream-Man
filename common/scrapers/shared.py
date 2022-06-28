@@ -213,8 +213,9 @@ class ScraperShowShared(ScraperShared, ABC):
         pass
 
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
+        pass
+        # with sync_playwright() as playwright:
+        #     self.download_show(playwright, minimum_timestamp)
 
     @cache  # Values should never change
     @abstractmethod
@@ -225,8 +226,15 @@ class ScraperShowShared(ScraperShared, ABC):
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         pass
 
-    @abstractmethod
     def update_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+
+    @abstractmethod
+    def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,

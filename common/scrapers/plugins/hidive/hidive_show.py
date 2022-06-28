@@ -154,13 +154,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 # TODO: Verification
                 episode_html_path.write(page.content())
 
-    def update_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -199,7 +192,7 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 season_info.thumbnail_url = season_info.image_url
                 season_info.add_timestamps_and_save(self.path_from_url(season_url))
 
-            self.update_episodes(season_info, season_html_path, minimum_info_timestamp, minimum_info_timestamp)
+            self.update_episodes(season_info, season_html_path, minimum_info_timestamp, minimum_modified_timestamp)
 
     def update_episodes(
         self,

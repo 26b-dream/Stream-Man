@@ -120,13 +120,6 @@ class FunimationShow(FunimationBase, ScraperShowShared):
         if page:
             page.close()
 
-    def update_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
