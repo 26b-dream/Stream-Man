@@ -83,7 +83,22 @@ class HuluShow(ScraperShowShared, HuluBase):
         page.goto(url, wait_until="networkidle")
         self.login_if_needed(page, url)
 
+    def season_path(self, season_name: str, extension: Literal[".html", ".json"]) -> ExtendedPath:
+        return self.path_from_url(self.show_url() + f"/{season_name}", extension)
+
+    def season_files_up_to_date(self, minimum_timestamp: Optional[datetime] = None) -> bool:
+        show_json_path = self.path_from_url(self.show_url(), ".json")
+        for season in show_json_path.parsed_json()["components"][0]["items"]:
+            season_name = season["name"]
+            season_json_path = self.season_path(season_name, ".json")
+            season_html_path = self.season_path(season_name, ".html")
+
+            if season_json_path.outdated(minimum_timestamp) or season_html_path.outdated(minimum_timestamp):
+                return False
+        return True
+
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
+
         show_html_path = self.path_from_url(self.show_url())
         show_json_path = self.path_from_url(self.show_url(), ".json")
         if show_html_path.outdated(minimum_timestamp) or show_json_path.outdated(minimum_timestamp):
@@ -100,21 +115,9 @@ class HuluShow(ScraperShowShared, HuluBase):
             # TODO: Verification
             json_path.write_json(response.json())
 
-    def season_file_outdated(self, minimum_timestamp: Optional[datetime] = None) -> bool:
-        show_json_path = self.path_from_url(self.show_url(), ".json")
-        for season in show_json_path.parsed_json()["components"][0]["items"]:
-            season_name = season["name"]
-            season_json_path = self.season_path(season_name, ".json")
-            season_html_path = self.season_path(season_name, ".html")
-
-            if season_json_path.outdated(minimum_timestamp) or season_html_path.outdated(minimum_timestamp):
-                return True
-
-        return False
-
     def download_seasons(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
-        # If the files are up to date nothing needs to be done
-        if not self.season_file_outdated(minimum_timestamp):
+        # If all of the season files are up to date nothing needs to be done
+        if self.season_files_up_to_date(minimum_timestamp):
             return
 
         page = self.playwright_browser(playwright).new_page()
@@ -151,9 +154,6 @@ class HuluShow(ScraperShowShared, HuluBase):
 
                     # This value needs to be updated every time the div is re-opened otherwise the click will fail
                     season_selection_list = page.query_selector_all("ul[data-automationid='detailsdropdown-list'] > li")
-
-    def season_path(self, season_name: str, extension: Literal[".html", ".json"]) -> ExtendedPath:
-        return self.path_from_url(self.show_url() + f"/{season_name}", extension)
 
     def download_season_response(self, response: Response) -> None:
         if "content/v5/hubs/series/" in response.url:
@@ -225,18 +225,16 @@ class HuluShow(ScraperShowShared, HuluBase):
             episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
 
             # If information is upt to date nothing needs to be done
-            print(minimum_modified_timestamp)
             if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                 return
 
             episode_info.name = episode["name"]
             episode_info.description = episode["description"]
 
-            # TODO: Find better image sizes
             base_img_url = episode["artwork"]["video.horizontal.hero"]["path"]
+            # The only image resolutions used by Hulu that is auto-generated is 600x600
             episode_info.thumbnail_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
             episode_info.image_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
-            print(episode_info.image_url)
             episode_info.release_date = datetime.strptime(episode["premiere_date"], "%Y-%m-%dT%H:%M:%SZ").astimezone()
             episode_info.number = episode["number"]
             episode_info.duration = episode["duration"]
