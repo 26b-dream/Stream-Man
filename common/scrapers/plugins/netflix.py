@@ -18,11 +18,9 @@ from common.extended_path import ExtendedPath
 from common.scrapers.shared import ScraperShowShared, ScraperUpdateShared
 
 # Config
-# Unknown
 from config.config import NetflixSecrets
 
 # Apps
-# Shows
 from shows.models import Episode, Season, Show
 
 

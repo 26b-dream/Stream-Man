@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from playwright.sync_api._generated import Playwright
     from typing import Any, Optional
     from common.extended_path import ExtendedPath
+
 # Standard Library
 import json
 from datetime import datetime

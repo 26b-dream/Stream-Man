@@ -15,7 +15,6 @@ from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperUpdateShared
 
 # Apps
-# Shows
 from shows.models import Show
 
 # Local

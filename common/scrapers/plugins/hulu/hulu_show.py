@@ -2,12 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# Standard Library
-from time import sleep
-
-# Config
-from config.config import HuluSecrets
-
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response
     from playwright.sync_api._generated import Playwright
@@ -17,6 +11,7 @@ if TYPE_CHECKING:
 # Standard Library
 from datetime import datetime
 from functools import cache
+from time import sleep
 
 # Third Party
 from playwright.sync_api._generated import Page
@@ -26,11 +21,11 @@ import common.extended_re as re
 from common.scrapers.plugins.hulu.hulu_base import HuluBase
 from common.scrapers.shared import ScraperShowShared
 
-# Apps
-# Shows
-from shows.models import Episode, Season
+# Config
+from config.config import HuluSecrets
 
-# Unknown
+# Apps
+from shows.models import Episode, Season
 
 
 class HuluShow(ScraperShowShared, HuluBase):

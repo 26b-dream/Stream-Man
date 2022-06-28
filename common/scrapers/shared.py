@@ -1,28 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, overload
-
-# Standard Library
-from functools import cache
-
-# Third Party
-from playwright.sync_api import sync_playwright
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Literal, Pattern
-
-    # Third Party
+    from typing import Any, Literal, Pattern, Optional, overload
     from playwright.sync_api._generated import BrowserContext, Playwright
-
-    # Apps
-    # Shows
     from shows.models import Episode
 
-# Regular imports
 # Standard Library
 import glob
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta
+from functools import cache
+
+# Third Party
+from playwright.sync_api import sync_playwright
 
 # Django
 from django.db import transaction
@@ -34,7 +26,6 @@ from common.extended_bs4 import BeautifulSoup
 from common.extended_path import ExtendedPath
 
 # Apps
-# Shows
 from shows.models import Show
 
 

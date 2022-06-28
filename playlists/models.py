@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 from django.db import models
 
 # Apps
-# Shows
 from shows.models import Episode, Season, Show
 
 # Local
