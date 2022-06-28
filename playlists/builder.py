@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 import random
 from datetime import datetime
 
+# Apps
 # Shows
 from shows.models import Episode, Show
 
@@ -41,7 +42,7 @@ class Builder:
         cls,
         episodes: QuerySet[Episode],
         sort_function: Callable[[list[tuple[Show, list[Episode]]]], None],
-        check_function: Callable[[list[tuple[Show, list[Episode]]]], bool],
+        change_show_function: Callable[[list[tuple[Show, list[Episode]]]], bool],
         resort_function: Callable[[list[tuple[Show, list[Episode]]]], None],
     ) -> list[Episode]:
         output: list[Episode] = []
@@ -59,8 +60,8 @@ class Builder:
                 # If all the episodes are used up from a show, remove the show from the list
                 if not show_episodes:
                     grouped_episodes.pop(0)
-                # If there are multiple
-                elif check_function(grouped_episodes):
+                # Check if show need to be reorganized after one episode is used and do so if required
+                elif change_show_function(grouped_episodes):
                     resort_function(grouped_episodes)
 
         return output
@@ -78,27 +79,29 @@ class Builder:
         def newest_episodes_first(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
             grouped_episodes.sort(key=lambda episode: episode[0].latest_episode_date(), reverse=True)
 
-    class Check:
+        @classmethod
+        def finish_up(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
+            grouped_episodes.sort(key=cls.__finish_up_value)
+
+        @classmethod
+        def __finish_up_value(cls, show: tuple[Show, list[Episode]]) -> int:
+            total = 0
+            for episode in show[1]:
+                total += episode.duration
+            return total
+
+    class ChangeShowIf:
         @classmethod
         def always(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
             return True
 
         @classmethod
+        def never(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
+            return False
+
+        @classmethod
         def more_than_one_show(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
             return len(grouped_episodes) > 1
-
-        # TODO: Move to builder class (requires possibly moving latest_episode_date as well)
-        @classmethod
-        def newer_episode(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
-            return len(grouped_episodes) > 1 and cls.latest_episode_date(
-                grouped_episodes[0][1]
-            ) < cls.latest_episode_date(grouped_episodes[1][1])
-
-        @classmethod
-        def latest_episode_date(cls, episodes: list[Episode]) -> datetime:
-            """Get the newest episode date from a list of episodes"""
-            sorted_episodes: list[Episode] = sorted(episodes, key=lambda episode: episode.release_date)
-            return sorted_episodes[-1].release_date
 
     class Resort:
         @classmethod

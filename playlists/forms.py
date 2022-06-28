@@ -93,6 +93,8 @@ class grouped_integer_field(forms.IntegerField, group_mixin):
 class PlaylistSortForm(forms.Form):
     """Form used to sort and filter playlists"""
 
+    # TODO: Consider making this form more dynamic and havign every buiolder option as an option allowing easier mixing and matching
+    # TODO: So finish_up_straight and finish_up_mixed could just be created on demand using toggles or something
     PLAYLIST_SORT_OPTIONS = [
         ("normal", "Normal"),
         ("random", "Random"),
@@ -100,6 +102,8 @@ class PlaylistSortForm(forms.Form):
         ("smart_newest_straight", "Smart Newest Straight"),
         ("smart_newest_mixed", "Smart Newest Mixed"),
         ("least_recently_watched", "Least Recently Watched"),
+        ("finish_up_straight", "Finish Up Straight"),
+        ("finish_up_mixed", "Finish Up Mixed"),
     ]
     FILTER_OPTIONS = (
         ("include_watched", "Include Watched"),

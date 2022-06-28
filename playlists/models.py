@@ -9,10 +9,6 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
 
-# Standard Library
-import random
-from datetime import datetime
-
 # Django
 from django.db import models
 
@@ -101,6 +97,10 @@ class Playlist(models.Model):
             episodes = episodes.order_by("-release_date")
         elif options.get("order") == "smart_newest_straight":
             episodes = self.__smart_newest_straight(episodes)
+        elif options.get("order") == "finish_up_mixed":
+            episodes = self.__finish_up_mixed(episodes)
+        elif options.get("order") == "finish_up_straight":
+            episodes = self.__finish_up_straight(episodes)
         elif options.get("order") == "smart_newest_mixed":
             episodes = self.__smart_newest_mixed(episodes)
         elif options.get("order") == "least_recently_watched":
@@ -133,7 +133,10 @@ class Playlist(models.Model):
         Supporting least recently watched on a per episode basis should be easy I just don't have the time"""
 
         return Builder.build_list(
-            episodes, Builder.Sort.least_recently_watched, Builder.Check.more_than_one_show, Builder.Resort.rotate
+            episodes,
+            Builder.Sort.least_recently_watched,
+            Builder.ChangeShowIf.more_than_one_show,
+            Builder.Resort.rotate,
         )
 
     # TODO: Should this be offloaded to Builder?
@@ -142,7 +145,10 @@ class Playlist(models.Model):
         This version will let one show exist for multiple episodes in row\n
         This is useful when watching multiple shows that are all airing at the same time"""
         return Builder.build_list(
-            episodes, Builder.Sort.newest_episodes_first, Builder.Check.newer_episode, Builder.Resort.swap_1_and_2
+            episodes,
+            Builder.Sort.newest_episodes_first,
+            Builder.ChangeShowIf.never,
+            Builder.Resort.swap_1_and_2,
         )
 
     # TODO: Should this be offloaded to Builder?
@@ -150,59 +156,24 @@ class Playlist(models.Model):
         """Sort episodes based on newest first but keep episodes order\n
         This version will let one show exist multiple times in a row"""
         return Builder.build_list(
-            episodes, Builder.Sort.newest_episodes_first, Builder.Check.always, Builder.Resort.rotate
+            episodes, Builder.Sort.newest_episodes_first, Builder.ChangeShowIf.always, Builder.Resort.rotate
         )
 
     # TODO: Should this be offloaded to Builder?
+    def __finish_up_mixed(self, episodes: QuerySet[Episode]) -> list[Episode]:
+        """Sort episodes based on newest first but keep episodes order\n
+        This version will let one show exist multiple times in a row"""
+        return Builder.build_list(episodes, Builder.Sort.finish_up, Builder.ChangeShowIf.always, Builder.Resort.rotate)
+
+    # TODO: Should this be offloaded to Builder?
+    def __finish_up_straight(self, episodes: QuerySet[Episode]) -> list[Episode]:
+        """Sort episodes based on newest first but keep episodes order\n
+        This version will let one show exist multiple times in a row"""
+        return Builder.build_list(episodes, Builder.Sort.finish_up, Builder.ChangeShowIf.never, Builder.Resort.rotate)
+
+    # TODO: Should this be offloaded to Builder?
     def __episodes_normal_order(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        return Builder.build_list(episodes, Builder.Sort.shuffle, Builder.Check.always, Builder.Sort.shuffle)
-
-    class Builder:
-        class Sort:
-            @classmethod
-            def shuffle(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
-                random.shuffle(grouped_episodes)
-
-            @classmethod
-            def least_recently_watched(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
-                grouped_episodes.sort(key=lambda episode: episode[0].last_watched_date(lazy=True))
-
-            @classmethod
-            def newest_episodes_first(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
-                grouped_episodes.sort(key=lambda episode: episode[0].latest_episode_date(), reverse=True)
-
-        class Check:
-            @classmethod
-            def always(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
-                return True
-
-            @classmethod
-            def more_than_one_show(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
-                return len(grouped_episodes) > 1
-
-            # TODO: Move to builder class (requires possibly moving latest_episode_date as well)
-            @classmethod
-            def newer_episode(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> bool:
-                return len(grouped_episodes) > 1 and cls.latest_episode_date(
-                    grouped_episodes[0][1]
-                ) < cls.latest_episode_date(grouped_episodes[1][1])
-
-            @classmethod
-            def latest_episode_date(cls, episodes: list[Episode]) -> datetime:
-                """Get the newest episode date from a list of episodes"""
-                sorted_episodes: list[Episode] = sorted(episodes, key=lambda episode: episode.release_date)
-                return sorted_episodes[-1].release_date
-
-        class Resort:
-            @classmethod
-            def rotate(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
-                grouped_episodes.append(grouped_episodes.pop(0))
-
-            @classmethod
-            def swap_1_and_2(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
-                grouped_episodes[0], grouped_episodes[1] = grouped_episodes[1], grouped_episodes[0]
-
-            pass
+        return Builder.build_list(episodes, Builder.Sort.shuffle, Builder.ChangeShowIf.always, Builder.Sort.shuffle)
 
 
 class PlaylistShow(models.Model):
