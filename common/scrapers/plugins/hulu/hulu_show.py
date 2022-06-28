@@ -38,10 +38,6 @@ class HuluShow(ScraperShowShared, HuluBase):
     FAVICON_URL = "https://assetshuluimcom-a.akamaihd.net/h3o/icons/favicon.ico.png"
     JUSTWATCH_PROVIDER_IDS = [430]
 
-    # Two different URLs for movies and TV shows, but they use similiar structures
-    # Example show URLs
-    #   https://www.hidive.com/tv/teasing-master-takagi-san3
-    #   https://www.hidive.com/movies/initial-d-legend-1-awakening
     SHOW_URL_REGEX = re.compile(r"^(?:https:\/\/www\.hulu\.com)?\/series\/(?P<show_id>.*)-.*-.*-.*-.*-.*$")
 
     @cache
@@ -130,10 +126,11 @@ class HuluShow(ScraperShowShared, HuluBase):
 
         # Open season selector
         if page.click_if_exists("div[data-automationid='detailsdropdown-selectedvalue']"):
+            # Get all of the seasons for the show
             season_selection_list = page.query_selector_all("ul[data-automationid='detailsdropdown-list'] > li")
-            seasons_int = len(season_selection_list)
+            number_of_seasons = len(season_selection_list)
 
-            for season_number in range(seasons_int):
+            for season_number in range(number_of_seasons):
                 season = season_selection_list[season_number]
                 season_name = season.strict_text_content()
                 season_json_path = self.season_path(season_name, ".json")
@@ -145,7 +142,6 @@ class HuluShow(ScraperShowShared, HuluBase):
                     # Response doesn't trigger consistently to download season json file
                     # Do a pointless query selector until the file exists to cause response to trigger
                     while not season_json_path.exists():
-                        print("Waiting to exist")
                         page.query_selector("html")
                         sleep(1)
 
@@ -153,6 +149,9 @@ class HuluShow(ScraperShowShared, HuluBase):
 
                     # Re-open season selector for the next loop
                     page.click("div[data-automationid='detailsdropdown-selectedvalue']")
+
+                    # This value needs to be updated every time the div is re-opened otherwise the click will fail
+                    season_selection_list = page.query_selector_all("ul[data-automationid='detailsdropdown-list'] > li")
 
     def season_path(self, season_name: str, extension: Literal[".html", ".json"]) -> ExtendedPath:
         return self.path_from_url(self.show_url() + f"/{season_name}", extension)
