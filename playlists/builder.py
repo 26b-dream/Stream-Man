@@ -9,10 +9,8 @@ if TYPE_CHECKING:
 
 # Standard Library
 import random
-from datetime import datetime
 
 # Apps
-# Shows
 from shows.models import Episode, Show
 
 

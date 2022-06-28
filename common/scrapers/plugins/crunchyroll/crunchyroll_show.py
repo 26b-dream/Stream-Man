@@ -16,7 +16,6 @@ from functools import cache
 # Common
 import common.extended_re as re
 from common.extended_path import ExtendedPath
-from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperShowShared
 
 # Config
@@ -40,9 +39,11 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
     #   https://beta.crunchyroll.com/series/G63VW2VWY/non-non-biyori
     SHOW_URL_REGEX = re.compile(r"^(?:https:\/\/beta\.crunchyroll\.com)?\/series\/*(?P<show_id>.*?)(?:\/|$)")
 
+    @cache
     def show_url(self) -> str:
         return f"{self.DOMAIN}/series/{self.show_id}"
 
+    @cache
     def episode_url(self, episode: Episode) -> str:
         return f"{self.DOMAIN}/watch/{episode.episode_id}"
 

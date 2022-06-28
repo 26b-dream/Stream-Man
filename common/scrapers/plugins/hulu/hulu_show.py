@@ -11,7 +11,7 @@ from config.config import HuluSecrets
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response
     from playwright.sync_api._generated import Playwright
-    from typing import Any, Optional, Dict
+    from typing import Optional
     from common.extended_path import ExtendedPath
 
 # Standard Library
@@ -19,7 +19,6 @@ from datetime import datetime
 from functools import cache
 
 # Third Party
-from bs4 import BeautifulSoup
 from playwright.sync_api._generated import Page
 
 # Common
@@ -29,11 +28,11 @@ from common.scrapers.shared import ScraperShowShared
 
 # Apps
 # Shows
-from shows.models import Episode, Season, Show
+from shows.models import Episode, Season
 
 # Unknown
 
-# TODO: Hulu can actually be entirely scraped from the API without logging in so this can be hugely simplified
+
 class HuluShow(ScraperShowShared, HuluBase):
     FAVICON_URL = "https://assetshuluimcom-a.akamaihd.net/h3o/icons/favicon.ico.png"
     JUSTWATCH_PROVIDER_IDS = [430]
