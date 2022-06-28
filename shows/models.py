@@ -2,12 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# Standard Library
-from functools import cache
-
-# Third Party
-from typing_extensions import Self
-
 if TYPE_CHECKING:
     from typing import Optional
     from django.db.models.query import QuerySet
@@ -16,6 +10,10 @@ if TYPE_CHECKING:
 
 # Standard Library
 from datetime import date
+from functools import cache
+
+# Third Party
+from typing_extensions import Self
 
 # Django
 from django.db import models

@@ -5,17 +5,14 @@ from __future__ import annotations
 # A list of all subclasses is required to match up instances with the source website
 from typing import TYPE_CHECKING
 
-# Common
-from common.extended_path import ExtendedPath
-
 if TYPE_CHECKING:
     from shows.models import Show
-
 
 # Standard Library
 import importlib
 
 # Common
+from common.extended_path import ExtendedPath
 from common.scrapers.shared import ScraperShowShared, ScraperUpdateShared
 
 # Import all plugins

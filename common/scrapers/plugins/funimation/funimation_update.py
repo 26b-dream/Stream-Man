@@ -2,13 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# Common
-from common.scrapers.plugins.funimation.funimation_base import FunimationBase
-
 if TYPE_CHECKING:
     from typing import Any, Optional
-
-    # Standard Library
     from datetime import date
 
 
@@ -17,6 +12,7 @@ from datetime import datetime
 
 # Common
 import common.extended_re as re
+from common.scrapers.plugins.funimation.funimation_base import FunimationBase
 from common.scrapers.shared import ScraperUpdateShared
 
 # Apps
