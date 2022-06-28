@@ -3,9 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Literal, Pattern, Optional, overload
+    from typing import Any, Literal, Pattern, Optional
     from playwright.sync_api._generated import BrowserContext, Playwright
     from shows.models import Episode
+
+from typing import overload
 
 # Standard Library
 import glob

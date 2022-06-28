@@ -26,3 +26,4 @@ class NetflixSecrets:
 class HuluSecrets:
     EMAIL: str = "EMAIL"
     PASSWORD: str = "PASSWORD"
+    NAME: str = "NAME"
