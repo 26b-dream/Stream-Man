@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 # Standard Library
 from time import sleep
@@ -11,7 +11,7 @@ from config.config import HuluSecrets
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response
     from playwright.sync_api._generated import Playwright
-    from typing import Optional
+    from typing import Optional, Literal
     from common.extended_path import ExtendedPath
 
 # Standard Library
