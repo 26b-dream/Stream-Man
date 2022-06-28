@@ -15,7 +15,6 @@ from functools import cache
 # Common
 import common.extended_re as re
 from common.extended_path import ExtendedPath
-from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperShowShared, ScraperUpdateShared
 
 # Config
