@@ -59,9 +59,9 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
     def season_json_url(self, season_id: str) -> str:
         return f"{self.DOMAIN}/cms/v2/US/M2/crunchyroll/episodes?season_id={season_id}"
 
-    # There is no seperate URL for seasons so make them a subdirectory of the show
     @cache
     def season_html_path(self, season: str) -> ExtendedPath:
+        # There is no seperate URL for seasons so make them a subdirectory of the show
         return self.path_from_url(f"{self.show_url()}/{season}")
 
     @cache
@@ -110,6 +110,7 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
 
         return False
 
+    @cache
     def any_show_file_outdated(self, minimum_timestamp: Optional[datetime] = None) -> bool:
         # Check if any files are out of date before launching the browser
         show_html_path = self.path_from_url(self.show_url())
@@ -119,10 +120,11 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
         # Check if any show files are outdated first that way the information on them can be used
         return (
             show_html_path.outdated(minimum_timestamp)
-            and show_json_path.outdated(minimum_timestamp)
-            and show_seasons_json_path.outdated(minimum_timestamp)
+            or show_json_path.outdated(minimum_timestamp)
+            or show_seasons_json_path.outdated(minimum_timestamp)
         )
 
+    @cache
     def any_season_file_is_outdated(self, season_id: str, minimum_timestamp: Optional[datetime] = None) -> bool:
         season_html_path = self.season_html_path(season_id)
         season_json_path = self.path_from_url(self.season_json_url(season_id))
@@ -214,8 +216,7 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
 
                     self.wait_for_files(page, season_json_path)
 
-                season_html_path = self.season_html_path(season["id"])
-                season_html_path.write(page.content())
+                self.season_html_path(season["id"]).write(page.content())
 
     def update_show(
         self,

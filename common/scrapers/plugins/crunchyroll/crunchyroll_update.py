@@ -10,6 +10,8 @@ from datetime import date, datetime, timedelta
 
 # Common
 import common.extended_re as re
+from common.constants import DOWNLOADED_FILES_DIR
+from common.extended_path import ExtendedPath
 from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperUpdateShared
 
@@ -26,6 +28,11 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
     BASE_CALENDAR_URL = DOMAIN + "/simulcastcalendar"
     JUSTWATCH_REGEX = re.compile(r"https:\/\/www\.crunchyroll\.com\/(?P<show_id>.*?)\/")
     JUSTWATCH_PROVIDER_IDS = [283]
+
+    def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
+        url = url.removeprefix(self.DOMAIN)
+        url = url.removeprefix("/")
+        return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
 
     def check_for_updates(self, earliest_date: Optional[date] = None) -> None:
         last_show = Show.objects.filter(website=self.WEBSITE).order_by("info_timestamp").first()
@@ -89,7 +96,7 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
             # TODO: File verification
             self.path_from_url(self.calendar_url(date)).write(page.content())
 
-            self.playwright_browser().close()
+            self.playwright_browser(playwright).close()
 
     def import_calendar(self, date: date) -> None:
         parsed_calendar = self.path_from_url(self.calendar_url(date)).parsed_html()
