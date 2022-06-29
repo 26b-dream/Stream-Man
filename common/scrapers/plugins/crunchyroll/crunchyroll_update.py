@@ -26,7 +26,7 @@ from .crunchyroll_show import CrunchyrollShow
 class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
     DOMAIN = "https://crunchyroll.com"
     BASE_CALENDAR_URL = DOMAIN + "/simulcastcalendar"
-    JUSTWATCH_REGEX = re.compile(r"https:\/\/www\.crunchyroll\.com\/(?P<show_id>.*?)\/")
+    OLD_EPISODE_URL_REGEX = re.compile(r"https:\/\/www\.crunchyroll\.com\/(?P<show_id>.*?)\/")
     JUSTWATCH_PROVIDER_IDS = [283]
 
     def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
@@ -118,7 +118,7 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
 
     def justwatch_update(self, justwatch_entry: dict[str, Any], date: datetime) -> None:
         justwatch_url = justwatch_entry["offers"][0]["urls"]["standard_web"]
-        show_id = re.strict_search(self.JUSTWATCH_REGEX, justwatch_url).group("show_id")
+        show_id = re.strict_search(self.OLD_EPISODE_URL_REGEX, justwatch_url).group("show_id")
         show = Show.objects.filter(website=self.WEBSITE, show_id_2=show_id)
 
         # If there is a show entry make sure the information is newer than the JustWatch entry
