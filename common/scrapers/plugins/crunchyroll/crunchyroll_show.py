@@ -8,8 +8,6 @@ if TYPE_CHECKING:
 
 # Standard Library
 from datetime import datetime
-
-# Unknown
 from functools import cache
 
 # Third Party
@@ -25,7 +23,6 @@ from common.scrapers.shared import ScraperShowShared
 from config.config import CrunchyrollSecrets
 
 # Apps
-# Shows
 from shows.models import Episode, Season
 
 # Local
