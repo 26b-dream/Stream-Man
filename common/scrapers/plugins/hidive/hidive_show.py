@@ -198,16 +198,24 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 season_info.thumbnail_url = season_info.image_url
                 season_info.add_timestamps_and_save(self.path_from_url(season_url))
 
-            self.update_episodes(season_info, season_html_path, minimum_info_timestamp, minimum_modified_timestamp)
+        # Episode information must be imported after all seasons are imported
+        # This is required because sometimes seasons include episodes from other seasons
+        for i, season_url in enumerate(self.show_html_season_urls()):
+            season_html_path = self.path_from_url(season_url)
+            self.update_episodes(season_html_path, minimum_info_timestamp, minimum_modified_timestamp)
 
     def update_episodes(
         self,
-        season_info: Season,
         season_html_path: ExtendedPath,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
         for i, episode_url in enumerate(self.season_html_episode_urls(season_html_path)):
+            # Sometimes episodes are listed multiple times for different seasons
+            # To compensate for this determine the season for each episode instead of assuming it is correct
+            season_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("season_id")
+            season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
+
             episode_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("episode_id")
             episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
 
