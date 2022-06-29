@@ -214,7 +214,6 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
 
                     self.wait_for_files(page, season_json_path)
 
-                # TODO: Verification
                 season_html_path = self.season_html_path(season["id"])
                 season_html_path.write(page.content())
 

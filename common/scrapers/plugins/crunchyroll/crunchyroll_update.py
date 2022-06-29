@@ -10,7 +10,6 @@ from datetime import date, datetime, timedelta
 
 # Common
 import common.extended_re as re
-from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_playwright import sync_playwright
 from common.scrapers.shared import ScraperUpdateShared
 
@@ -24,7 +23,7 @@ from .crunchyroll_show import CrunchyrollShow
 
 class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
     DOMAIN = "https://crunchyroll.com"
-    CALENDAR_URL = DOMAIN + "/simulcastcalendar"
+    BASE_CALENDAR_URL = DOMAIN + "/simulcastcalendar"
     JUSTWATCH_REGEX = re.compile(r"https:\/\/www\.crunchyroll\.com\/(?P<show_id>.*?)\/")
     JUSTWATCH_PROVIDER_IDS = [283]
 
@@ -35,7 +34,7 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
         if not last_show:
             return
 
-        # If there is no date string create one based on the oldest show for this website
+        # If there is no date create one based on the oldest show for this website
         if not earliest_date:
             timestamp_as_date = last_show.info_timestamp.date()
 
@@ -55,7 +54,7 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
         self.import_calendar(earliest_date)
 
     def calendar_url(self, date: date) -> str:
-        return self.CALENDAR_URL + "?date=" + date.strftime("%Y-%m-%d")
+        return self.BASE_CALENDAR_URL + "?date=" + date.strftime("%Y-%m-%d")
 
     # TODO: Maybe move some of this to an ExtendedPath function as it seems like it could be useful
     def calendar_file_outdated(self, date: date) -> bool:
@@ -72,20 +71,17 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
         if file_timestamp > one_week_timestamp:
             return False
 
-        # If the file is older than 12 hours it's ok to update it
-        if file_timestamp + timedelta(hours=12) < datetime.now():
+        # If the file is older than 6 hours it's ok to update it
+        if file_timestamp + timedelta(hours=6) < datetime.now():
             return True
-        # If the file is newer than 12 hours do not bother updating it
+        # If the file is newer than 6 hours do not bother updating it
         else:
             return False
 
     def download_calendar_page(self, date: date) -> None:
         print(f"Downloading: {self.calendar_url(date)}")
-        with sync_playwright() as p:
-            browser = p.chromium.launch_persistent_context(
-                DOWNLOADED_FILES_DIR / "cookies/Chrome", headless=False, accept_downloads=True, channel="chrome"
-            )
-            page = browser.new_page()
+        with sync_playwright() as playwright:
+            page = self.playwright_browser(playwright).new_page()
             # networkidle just hangs sometimes so try load
             page.goto(self.calendar_url(date), wait_until="load")
 
@@ -93,7 +89,7 @@ class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):
             # TODO: File verification
             self.path_from_url(self.calendar_url(date)).write(page.content())
 
-            browser.close()
+            self.playwright_browser().close()
 
     def import_calendar(self, date: date) -> None:
         parsed_calendar = self.path_from_url(self.calendar_url(date)).parsed_html()
