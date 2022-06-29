@@ -14,6 +14,7 @@ from functools import cache
 from time import sleep
 
 # Third Party
+from playwright.sync_api import sync_playwright
 from playwright.sync_api._generated import Page
 
 # Common
@@ -86,6 +87,10 @@ class HuluShow(ScraperShowShared, HuluBase):
             if season_json_path.outdated(minimum_timestamp) or season_html_path.outdated(minimum_timestamp):
                 return False
         return True
+
+    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
 

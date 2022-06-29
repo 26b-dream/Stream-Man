@@ -12,6 +12,9 @@ import time
 from datetime import date, datetime
 from functools import cache
 
+# Third Party
+from playwright.sync_api import sync_playwright
+
 # Common
 import common.extended_re as re
 from common.extended_path import ExtendedPath
@@ -165,6 +168,10 @@ class NetflixShow(NetflixBase, ScraperShowShared):
                 if all("summary" in value.keys() for value in body["jsonGraph"]["seasons"].values()):
                     show_json_path = self.path_from_url(self.show_url(), ".json")
                     show_json_path.write_json(body)
+
+    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
     def download_seasons(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         page = None

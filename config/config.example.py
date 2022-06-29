@@ -11,7 +11,7 @@ class HIDIVESecrets:
 
 
 @dataclass
-class CrunchyRollSecrets:
+class CrunchyrollSecrets:
     EMAIL: str = "EMAIL"
     PASSWORD: str = "PASSWORD"
 

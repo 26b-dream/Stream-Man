@@ -14,6 +14,9 @@ from datetime import datetime
 # StandardLibrary
 from functools import cache
 
+# Third Party
+from playwright.sync_api import sync_playwright
+
 # Common
 from common.extended_path import ExtendedPath
 from common.scrapers.shared import ScraperShowShared
@@ -51,6 +54,10 @@ class FunimationShow(FunimationBase, ScraperShowShared):
             # The path is virtually the same though with a different domain and prefixes
             # For simplicity merge these two and have the names match
             self.path_from_url(self.show_url(), ".json").write_json(response.json())
+
+    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         html_path = self.path_from_url(self.show_url())

@@ -14,6 +14,7 @@ from functools import cache
 
 # Third Party
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 from playwright.sync_api._generated import Page
 
 # Common
@@ -117,6 +118,10 @@ class HidiveShow(ScraperShowShared, HidiveBase):
 
         # All verifications passed assume file is good
         return True
+
+    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
+        with sync_playwright() as playwright:
+            self.download_show(playwright, minimum_timestamp)
 
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         show_html_path = self.path_from_url(self.show_url())

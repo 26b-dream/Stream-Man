@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any, Literal, Pattern, Optional
-    from playwright.sync_api._generated import BrowserContext, Playwright
+    from playwright.sync_api._generated import BrowserContext, Playwright, Page
     from shows.models import Episode
 
 from typing import overload
@@ -14,9 +14,7 @@ import glob
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta
 from functools import cache
-
-# Third Party
-from playwright.sync_api import sync_playwright
+from time import sleep
 
 # Django
 from django.db import transaction
@@ -206,17 +204,13 @@ class ScraperShowShared(ScraperShared, ABC):
     def episode_url(self, episode: Episode) -> str:
         ...
 
+    @abstractmethod
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
+        ...
 
     @cache  # Values should never change
     @abstractmethod
     def show_url(self) -> str:
-        ...
-
-    @abstractmethod
-    def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         ...
 
     def update_all(
@@ -233,3 +227,10 @@ class ScraperShowShared(ScraperShared, ABC):
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
         ...
+
+    def wait_for_files(self, page: Page, *files: ExtendedPath) -> None:
+        for file in files:
+            while not file.exists():
+                # Executing a query_selector will keep the download form randomly hanging while waiting for the file to exist
+                page.query_selector("html")
+                sleep(1)
