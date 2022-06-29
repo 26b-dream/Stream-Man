@@ -13,6 +13,7 @@ from django import forms
 from common.scrapers import SHOW_SUBCLASSES
 
 # Local
+from .builder import Builder
 from .models import Playlist, PlaylistSeason, PlaylistShow
 
 
@@ -93,55 +94,73 @@ class grouped_integer_field(forms.IntegerField, group_mixin):
 class PlaylistSortForm(forms.Form):
     """Form used to sort and filter playlists"""
 
-    # TODO: Consider making this form more dynamic and havign every buiolder option as an option allowing easier mixing and matching
-    # TODO: So finish_up_straight and finish_up_mixed could just be created on demand using toggles or something
-    PLAYLIST_SORT_OPTIONS = [
-        ("normal", "Normal"),
-        ("random", "Random"),
-        ("newest", "Newest First"),
-        ("smart_newest_straight", "Smart Newest Straight"),
-        ("smart_newest_mixed", "Smart Newest Mixed"),
-        ("least_recently_watched", "Least Recently Watched"),
-        ("finish_up_straight", "Finish Up Straight"),
-        ("finish_up_mixed", "Finish Up Mixed"),
-    ]
+    show_order = grouped_choice_field(
+        choices=Builder.ShowOrder.acceptable_functions,
+        widget=forms.RadioSelect,
+        initial="random",
+        required=False,
+    )
+    show_order.group = 0
+    show_order.group_title = "Show Order"
+
+    episode_order = grouped_choice_field(
+        choices=Builder.EpisodeOrder.acceptable_functions,
+        widget=forms.RadioSelect,
+        initial="chronological",
+        required=False,
+    )
+    episode_order.group = 1
+    episode_order.group_title = "Episode Order"
+
+    change_show = grouped_choice_field(
+        choices=Builder.ChangeShowIf.acceptable_functions,
+        widget=forms.RadioSelect,
+        initial="after_every_episode",
+        required=False,
+    )
+    change_show.group = 2
+    change_show.group_title = "Change Show"
+
+    rotate_type = grouped_choice_field(
+        choices=Builder.Resort.acceptable_functions,
+        widget=forms.RadioSelect,
+        required=False,
+        initial="rotate",
+    )
+    rotate_type.group = 3
+    rotate_type.group_title = "Rotate Type"
+
     FILTER_OPTIONS = (
         ("include_watched", "Include Watched"),
         ("only_started_shows", "Only Started Shows"),
         ("only_new_shows", "Only New Shows"),
     )
-    REVERSE_OPTIONS = (("reverse", "Reverse"),)
-
-    order = grouped_choice_field(
-        choices=PLAYLIST_SORT_OPTIONS,
-        widget=forms.RadioSelect,
-        initial="normal",
-        required=False,
+    REVERSE_OPTIONS = (
+        ("shows", "Shows"),
+        ("episodes", "Episodes"),
     )
-
-    # It seems dumb to have this as a multiple choice when there is only one option
-    # Djang just formats text prettier when using MultipleChoiceField with CheckboxSelectMultiple
-    # So multiple choice is used just to improve user experience even if it seems illoigcal
     reverse = grouped_multiple_choice_field(
         choices=REVERSE_OPTIONS, widget=forms.CheckboxSelectMultiple, required=False
     )
+    reverse.group = 4
+    reverse.group_title = "Reverse"
 
-    episode_filter = grouped_multiple_choice_field(
-        choices=FILTER_OPTIONS, widget=forms.CheckboxSelectMultiple, required=False
-    )
     websites = grouped_multiple_choice_field(
         choices=[(x.WEBSITE, x.WEBSITE) for x in SHOW_SUBCLASSES.values()],
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
+    websites.group = 5
+    websites.group_title = "Wesbites"
+
+    episode_filter = grouped_multiple_choice_field(
+        choices=FILTER_OPTIONS, widget=forms.CheckboxSelectMultiple, required=False
+    )
+    episode_filter.group = 6
+    episode_filter.group_title = "Filter"
+
     number_of_episodes = grouped_integer_field(initial=100)
+    number_of_episodes.group = 7
+    number_of_episodes.group_title = "Number of Episodes"
 
     # Group specific fields together so the form is easier to use
-    order.group = reverse.group = 1
-    order.group_title = reverse.group_title = "Order"
-    episode_filter.group = 2
-    episode_filter.group_title = "Filter"
-    websites.group = 3
-    websites.group_title = "Wesbites"
-    number_of_episodes.group = 4
-    number_of_episodes.group_title = "Number of Episodes"

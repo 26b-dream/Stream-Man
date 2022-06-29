@@ -88,91 +88,19 @@ class Playlist(models.Model):
             websites = [x for x in options["websites"]]
             episodes = episodes.filter(season__show__website__in=websites)
 
-        # By default sort by picking a random show and picking the first episode chronologically
-        #   Any other fun order I can think of will also be added
-        if options.get("order") == "random":
-            episodes = episodes.order_by("?")
-        elif options.get("order") == "newest":
-            episodes = episodes.order_by("-release_date")
-        elif options.get("order") == "smart_newest_straight":
-            episodes = self.__smart_newest_straight(episodes)
-        elif options.get("order") == "finish_up_mixed":
-            episodes = self.__finish_up_mixed(episodes)
-        elif options.get("order") == "finish_up_straight":
-            episodes = self.__finish_up_straight(episodes)
-        elif options.get("order") == "smart_newest_mixed":
-            episodes = self.__smart_newest_mixed(episodes)
-        elif options.get("order") == "least_recently_watched":
-            episodes = self.__least_recently_watched(episodes)
-        else:
-            episodes = self.__episodes_normal_order(episodes)
+        episodes = Builder.build_list(
+            episodes,
+            getattr(Builder.ShowOrder, str(options.get("show_order")), Builder.ShowOrder.random),
+            "shows" in options.get("reverse", []),
+            getattr(Builder.EpisodeOrder, str(options.get("episode_order")), Builder.EpisodeOrder.chronological),
+            "episodes" in options.get("reverse", []),
+            getattr(Builder.ChangeShowIf, str(options.get("change_show")), Builder.ChangeShowIf.after_every_episode),
+            getattr(Builder.Resort, str(options.get("rotate_type")), Builder.Resort.rotate),
+        )
 
-        # Have the option to reverse the order of the episodes
-        #   This is most useful when sorting by episode dates
-        if options.get("reverse"):
-            # list.reverse() and QuerySet.reverse() are different
-            #   list.reverse() modifies existing list
-            #   QuerySet.reverse() returns a new QuerySet
-            #   Therefore they need different function calls
-            #   Functionall, you can use episodes = reversed(episodes) but that returns a weird type
-            #   TODO: Figure out how to work with the return type of reversed()
-            if isinstance(episodes, list):
-                episodes.reverse()
-            else:
-                episodes = episodes.reverse()
         # If no number of episodes are given default to 100
         number_of_episodes = options.get("number_of_episodes", playlist_order_form["number_of_episodes"].initial)
         return episodes[:number_of_episodes]
-
-    # TODO: Should this be offloaded to Builder?
-    # TODO: Add support for correctly sorting watched episodes
-    def __least_recently_watched(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        """Sort episodes based on least recently watched, kind of...\n
-        Does not yhet support properly sorting previously watched episodes, just new episodes\n
-        Supporting least recently watched on a per episode basis should be easy I just don't have the time"""
-
-        return Builder.build_list(
-            episodes,
-            Builder.Sort.least_recently_watched,
-            Builder.ChangeShowIf.more_than_one_show,
-            Builder.Resort.rotate,
-        )
-
-    # TODO: Should this be offloaded to Builder?
-    def __smart_newest_straight(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        """Sort episodes based on newest first but keep episodes order\n
-        This version will let one show exist for multiple episodes in row\n
-        This is useful when watching multiple shows that are all airing at the same time"""
-        return Builder.build_list(
-            episodes,
-            Builder.Sort.newest_episodes_first,
-            Builder.ChangeShowIf.never,
-            Builder.Resort.swap_1_and_2,
-        )
-
-    # TODO: Should this be offloaded to Builder?
-    def __smart_newest_mixed(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        """Sort episodes based on newest first but keep episodes order\n
-        This version will let one show exist multiple times in a row"""
-        return Builder.build_list(
-            episodes, Builder.Sort.newest_episodes_first, Builder.ChangeShowIf.always, Builder.Resort.rotate
-        )
-
-    # TODO: Should this be offloaded to Builder?
-    def __finish_up_mixed(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        """Sort episodes based on newest first but keep episodes order\n
-        This version will let one show exist multiple times in a row"""
-        return Builder.build_list(episodes, Builder.Sort.finish_up, Builder.ChangeShowIf.always, Builder.Resort.rotate)
-
-    # TODO: Should this be offloaded to Builder?
-    def __finish_up_straight(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        """Sort episodes based on newest first but keep episodes order\n
-        This version will let one show exist multiple times in a row"""
-        return Builder.build_list(episodes, Builder.Sort.finish_up, Builder.ChangeShowIf.never, Builder.Resort.rotate)
-
-    # TODO: Should this be offloaded to Builder?
-    def __episodes_normal_order(self, episodes: QuerySet[Episode]) -> list[Episode]:
-        return Builder.build_list(episodes, Builder.Sort.shuffle, Builder.ChangeShowIf.always, Builder.Sort.shuffle)
 
 
 class PlaylistShow(models.Model):
