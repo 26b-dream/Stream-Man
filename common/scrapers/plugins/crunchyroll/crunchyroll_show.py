@@ -187,7 +187,6 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
         )
         matching_seasons: list[ElementHandle] = []
         for season in seasons:
-            print(season.strict_text_content())
             if season.strict_text_content().endswith(season_name):
                 matching_seasons.append(season)
         if len(matching_seasons) == 0:

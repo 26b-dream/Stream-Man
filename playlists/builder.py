@@ -146,5 +146,4 @@ class Builder:
 for x in [Builder.ShowOrder, Builder.Resort, Builder.ChangeShowIf, Builder.EpisodeOrder]:
     for method in [method for method in dir(x) if method.startswith("_") is False]:
         if method != "acceptable_functions":
-            print(method)
             x.acceptable_functions.append((method, method.replace("_", " ").title()))  # type: ignore - This just throws errors because of the loop

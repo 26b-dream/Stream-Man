@@ -194,7 +194,6 @@ class HuluShow(ScraperShowShared, HuluBase):
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        print(minimum_modified_timestamp)
         show_json_path = self.path_from_url(self.show_url(), ".json")
         for season in show_json_path.parsed_json()["components"][0]["items"]:
             season_name = season["name"]
