@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Playwright
     from typing import Any, Optional
-    from common.extended_path import ExtendedPath
 
 # Standard Library
 import json
@@ -19,6 +18,8 @@ from playwright.sync_api._generated import Page
 
 # Common
 import common.extended_re as re
+from common.constants import DOWNLOADED_FILES_DIR
+from common.extended_path import ExtendedPath
 from common.scrapers.plugins.hidive.hidive_base import HidiveBase
 from common.scrapers.shared import ScraperShowShared
 
@@ -39,62 +40,62 @@ class HidiveShow(ScraperShowShared, HidiveBase):
     #   https://www.hidive.com/movies/initial-d-legend-1-awakening
     SHOW_URL_REGEX = re.compile(r"^(?:https?:\/\/www\.hidive\.com)?\/(?:tv|movies)\/(?P<show_id>.*)")
 
-    @cache  # Values should never change
+    @cache
     def show_url(self) -> str:
         # This isn't the actual URL for movies, but it works
         return f"{self.DOMAIN}/tv/{self.show_id}"
 
-    @cache  # Values should never change
+    @cache
     def season_url(self, season_id: str) -> str:
         # This isn't the actual URL for movies, but it works
         return f"{self.DOMAIN}/tv/{season_id}"
 
-    @cache  # Values should never change
+    @cache
     def episode_url(self, episode: Episode) -> str:
         return f"{self.DOMAIN}/stream/{episode.season.season_id}/{episode.episode_id}/"
 
-    def login(self, page: Page) -> None:
-        page.goto(f"{self.DOMAIN}/account/login", wait_until="networkidle")
-
-        # If there is the accept cookies button click it
-        # This is requried for clicking the button to login
-        if page.click_if_exists("button >> text=Accept"):
-            page.wait_for_load_state("networkidle")
-
-        # Login
-        page.type("input[id='Email']", HIDIVESecrets.EMAIL)
-        page.type("input[id='Password']", HIDIVESecrets.PASSWORD)
-        page.click("button[id='signInButton']")
-
-        # When logging in user is redirected to the dashboard so wait for redirect to complete
-        page.wait_for_url(f"{self.DOMAIN}/dashboard")
-
-    def login_if_needed(self, page: Page, url: str) -> None:
-        if page.query_selector("a[href='/account/login']"):
-            self.login(page)
-            page.goto(url, wait_until="networkidle")
+    @cache
+    def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
+        url = url.removeprefix(self.DOMAIN)
+        url = url.removeprefix("/")
+        return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
 
     def go_to_page_logged_in(self, page: Page, url: str) -> None:
         page.goto(url, wait_until="networkidle")
-        self.login_if_needed(page, url)
+        if page.query_selector("a[href='/account/login']"):
+            page.goto(f"{self.DOMAIN}/account/login", wait_until="networkidle")
 
-    @cache  # Values only change when show_html file changes
-    def show_html_season_urls(self) -> list[str]:
-        path = self.path_from_url(self.show_url())
-        if seasons := path.parsed_html().select("ul[class*='nav-tabs'] > li > a"):
+            # If there is the accept cookies button click it
+            # This is requried for clicking the button to login
+            if page.click_if_exists("button >> text=Accept"):
+                page.wait_for_load_state("networkidle")
+
+            # Login
+            page.type("input[id='Email']", HIDIVESecrets.EMAIL)
+            page.type("input[id='Password']", HIDIVESecrets.PASSWORD)
+            page.click("button[id='signInButton']")
+
+            # When logging in user is redirected to the dashboard so wait for redirect to complete
+            page.wait_for_url(f"{self.DOMAIN}/dashboard")
+            page.goto(url, wait_until="networkidle")
+
+    @cache
+    def season_urls_from_show_html(self) -> list[str]:
+        show_html_parsed = self.path_from_url(self.show_url()).parsed_html()
+        if seasons := show_html_parsed.select("ul[class*='nav-tabs'] > li > a"):
             return [partial_url.strict_get("href") for partial_url in seasons]
         # Shows with only a single season don't have the season selector
         # For these shows just return the original show URL
         else:
             return [self.show_url()]
 
-    @cache  # Values only change when show_html file changes
-    def season_html_episode_urls(self, season_path: ExtendedPath) -> list[str]:
+    @cache
+    def episode_urls_from_season_html(self, season_path: ExtendedPath) -> list[str]:
         episodes_div = season_path.parsed_html().strict_select("div[class='slick-track']")[0]
         episodes = episodes_div.strict_select("div[class*='slick-slide'] a")
         return [partial_url.strict_get("data-playurl") for partial_url in episodes]
 
-    @cache  # Values only change when show_html file changes
+    @cache
     def json_from_html_file(self, path: ExtendedPath) -> dict[str, Any]:
         json_string = path.parsed_html().strict_select_one("script[type='application/ld+json']").text
         return json.loads(json_string)
@@ -119,9 +120,22 @@ class HidiveShow(ScraperShowShared, HidiveBase):
         # All verifications passed assume file is good
         return True
 
+    def any_file_is_outdated(self, minimum_timestamp: Optional[datetime] = None) -> bool:
+        # Check if any show files are outdated first that way the information on them can be used
+        if self.path_from_url(self.show_url()).outdated(minimum_timestamp):
+            print(self.path_from_url(self.show_url()))
+            return True
+
+        for season_url in self.season_urls_from_show_html():
+            if self.path_from_url(season_url).outdated(minimum_timestamp):
+                print(self.path_from_url(season_url))
+                return True
+        return False
+
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        with sync_playwright() as playwright:
-            self.download_show(playwright, minimum_timestamp)
+        if self.any_file_is_outdated(minimum_timestamp):
+            with sync_playwright() as playwright:
+                self.download_show(playwright, minimum_timestamp)
 
     def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
         show_html_path = self.path_from_url(self.show_url())
@@ -129,6 +143,7 @@ class HidiveShow(ScraperShowShared, HidiveBase):
             page = self.playwright_browser(playwright).new_page()
             self.go_to_page_logged_in(page, self.show_url())
 
+            # Need to make sure this is the first season
             if not self.show_is_valid(page):
                 raise Exception(f"Invalid page {self.show_url()}")
 
@@ -137,27 +152,25 @@ class HidiveShow(ScraperShowShared, HidiveBase):
         self.download_seasons(playwright, minimum_timestamp)
 
     def download_seasons(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
-        for partial_season_url in self.show_html_season_urls():
+        for partial_season_url in self.season_urls_from_show_html():
             season_html_path = self.path_from_url(partial_season_url)
 
             if season_html_path.outdated(minimum_timestamp):
                 page = self.playwright_browser(playwright).new_page()
                 page.goto(self.DOMAIN + partial_season_url)
-                # TODO: Verification
                 season_html_path.write(page.content())
 
             self.download_episodes(playwright, season_html_path)
 
+    # Download every episode because somwe information is only available on the episode pages
     def download_episodes(self, playwright: Playwright, season_html_path: ExtendedPath) -> None:
-        # Download every episode because somwe information is only available on the episode pages
-        for partial_episode_url in self.season_html_episode_urls(season_html_path):
+        for partial_episode_url in self.episode_urls_from_season_html(season_html_path):
             episode_html_path = self.path_from_url(partial_episode_url)
             if not episode_html_path.exists():
                 page = self.playwright_browser(playwright).new_page()
 
                 # Episode length is only shown when logged in
                 self.go_to_page_logged_in(page, self.DOMAIN + partial_episode_url)
-                # TODO: Verification
                 episode_html_path.write(page.content())
 
     def update_show(
@@ -182,7 +195,7 @@ class HidiveShow(ScraperShowShared, HidiveBase):
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        for i, season_url in enumerate(self.show_html_season_urls()):
+        for i, season_url in enumerate(self.season_urls_from_show_html()):
             # The Show & Season Regex are basically the same so re-using this even though names don't match
             season_id = re.strict_search(self.SHOW_URL_REGEX, season_url).group("show_id")
             season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
@@ -200,7 +213,7 @@ class HidiveShow(ScraperShowShared, HidiveBase):
 
         # Episode information must be imported after all seasons are imported
         # This is required because sometimes seasons include episodes from other seasons
-        for i, season_url in enumerate(self.show_html_season_urls()):
+        for i, season_url in enumerate(self.season_urls_from_show_html()):
             season_html_path = self.path_from_url(season_url)
             self.update_episodes(season_html_path, minimum_info_timestamp, minimum_modified_timestamp)
 
@@ -210,7 +223,7 @@ class HidiveShow(ScraperShowShared, HidiveBase):
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        for i, episode_url in enumerate(self.season_html_episode_urls(season_html_path)):
+        for i, episode_url in enumerate(self.episode_urls_from_season_html(season_html_path)):
             # Sometimes episodes are listed multiple times for different seasons
             # To compensate for this determine the season for each episode instead of assuming it is correct
             season_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("season_id")
