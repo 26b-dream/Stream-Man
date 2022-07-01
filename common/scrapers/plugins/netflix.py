@@ -17,6 +17,7 @@ from playwright.sync_api import sync_playwright
 
 # Common
 import common.extended_re as re
+from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
 from common.scrapers.shared import ScraperShowShared, ScraperUpdateShared
 
@@ -40,6 +41,11 @@ class NetflixBase:
 
 class NetflixShow(NetflixBase, ScraperShowShared):
     FAVICON_URL = "https://assets.nflxext.com/ffe/siteui/common/icons/nficon2016.ico"
+
+    def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
+        url = url.removeprefix(self.DOMAIN)
+        url = url.removeprefix("/")
+        return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
 
     @cache  # Values should never change
     def show_url(self) -> str:

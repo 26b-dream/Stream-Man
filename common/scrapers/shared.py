@@ -31,15 +31,9 @@ class ScraperShared(ABC):
     WEBSITE: str
     DOMAIN: str
 
-    @cache  # Values should never change
-    def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
-        url = url.removeprefix(self.DOMAIN)
-        url = url.removeprefix("/")
-        return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
-
     @cache  # Re-use the same browser instance to download everything
-    def playwright_browser(self, p: Playwright) -> BrowserContext:
-        return p.chromium.launch_persistent_context(
+    def playwright_browser(self, playwright: Playwright) -> BrowserContext:
+        return playwright.chromium.launch_persistent_context(
             DOWNLOADED_FILES_DIR / "cookies/Chrome",
             headless=False,
             accept_downloads=True,
@@ -141,8 +135,8 @@ class ScraperShowShared(ScraperShared, ABC):
                 page.query_selector("html")
                 sleep(1)
 
-    @cache  # Values should never change
     @abstractmethod
+    @cache
     def episode_url(self, episode: Episode) -> str:
         ...
 
@@ -150,8 +144,8 @@ class ScraperShowShared(ScraperShared, ABC):
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
         ...
 
-    @cache  # Values should never change
     @abstractmethod
+    @cache
     def show_url(self) -> str:
         ...
 

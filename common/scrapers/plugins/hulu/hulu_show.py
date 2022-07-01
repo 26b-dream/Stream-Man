@@ -19,6 +19,7 @@ from playwright.sync_api._generated import Page
 
 # Common
 import common.extended_re as re
+from common.constants import DOWNLOADED_FILES_DIR
 from common.scrapers.plugins.hulu.hulu_base import HuluBase
 from common.scrapers.shared import ScraperShowShared
 
@@ -33,11 +34,14 @@ class HuluShow(ScraperShowShared, HuluBase):
     FAVICON_URL = "https://assetshuluimcom-a.akamaihd.net/h3o/icons/favicon.ico.png"
     SHOW_URL_REGEX = re.compile(r"^(?:https:\/\/www\.hulu\.com)?\/series\/(?P<show_id>.*)-.*-.*-.*-.*-.*$")
 
-    @cache
+    def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
+        url = url.removeprefix(self.DOMAIN)
+        url = url.removeprefix("/")
+        return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
+
     def show_url(self) -> str:
         return f"{self.DOMAIN}/series/{self.show_id}"
 
-    @cache
     def episode_url(self, episode: Episode) -> str:
         return f"{self.DOMAIN}/watch/{episode.episode_id}/"
 
