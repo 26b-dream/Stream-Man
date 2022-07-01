@@ -263,7 +263,7 @@ class FunimationShow(FunimationBase, ScraperShowShared):
             if not episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                 episode_info.sort_order = i
                 episode_info.name = episode["name"]["en"]
-                episode_info.number = episode["episodeNumber"]
+                episode_info.number = episode["episodeNumber"] or episode["type"]
                 episode_info.description = episode["synopsis"]["en"]
                 episode_info.duration = episode["duration"]
                 # Some episodes do not have a release date so check if it exists first
