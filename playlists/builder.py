@@ -99,7 +99,7 @@ class Builder:
             grouped_episodes.sort(key=lambda episode: episode[0].latest_episode_date(), reverse=True)
 
         @classmethod
-        def finish_up(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
+        def finish_up_duration(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
             grouped_episodes.sort(key=cls.__finish_up_value)
 
         @classmethod
@@ -107,6 +107,17 @@ class Builder:
             total = 0
             for episode in show[1]:
                 total += episode.duration
+            return total
+
+        @classmethod
+        def finish_up_episodes(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
+            grouped_episodes.sort(key=cls.__finish_up_episodes)
+
+        @classmethod
+        def __finish_up_episodes(cls, show: tuple[Show, list[Episode]]) -> int:
+            total = 0
+            for _ in show[1]:
+                total += 1
             return total
 
     class EpisodeOrder:
