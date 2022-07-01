@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 # Common
 import common.extended_re as re
 
