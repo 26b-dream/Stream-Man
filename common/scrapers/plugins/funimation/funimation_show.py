@@ -114,6 +114,7 @@ class FunimationShow(FunimationBase, ScraperShowShared):
                 page = self.playwright_browser(playwright).new_page()
                 page.on("response", lambda request: self.download_response(request))
                 self.download_show(page, minimum_timestamp)
+                self.download_seasons(page, minimum_timestamp)
                 page.close()
 
     def download_show(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
@@ -148,7 +149,6 @@ class FunimationShow(FunimationBase, ScraperShowShared):
 
             # Click this button to close the season selector
             page.click("div[data-test='content-details-tabs__episodes']")
-        self.download_seasons(page, minimum_timestamp)
 
     def download_matching_season(self, page: Page, season_id: str, season_name: str) -> bool:
         page.wait_for_load_state("networkidle")

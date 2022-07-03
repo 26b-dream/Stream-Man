@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from playwright.sync_api._generated import Playwright
     from typing import Any, Optional
+    from playwright.sync_api._generated import Page
 
 # Standard Library
 import json
@@ -14,7 +14,6 @@ from functools import cache
 # Third Party
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
-from playwright.sync_api._generated import Page
 
 # Common
 import common.extended_re as re
@@ -123,24 +122,32 @@ class HidiveShow(ScraperShowShared, HidiveBase):
     def any_file_is_outdated(self, minimum_timestamp: Optional[datetime] = None) -> bool:
         # Check if any show files are outdated first that way the information on them can be used
         if self.path_from_url(self.show_url()).outdated(minimum_timestamp):
-            print(self.path_from_url(self.show_url()))
             return True
 
         for season_url in self.season_urls_from_show_html():
             if self.path_from_url(season_url).outdated(minimum_timestamp):
-                print(self.path_from_url(season_url))
                 return True
         return False
 
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
         if self.any_file_is_outdated(minimum_timestamp):
             with sync_playwright() as playwright:
-                self.download_show(playwright, minimum_timestamp)
+                page = self.playwright_browser(playwright).new_page()
+                self.download_show(page, minimum_timestamp)
+                self.download_seasons(page, minimum_timestamp)
+                self.download_episodes(page, minimum_timestamp)
+                page.close()
 
-    def download_show(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
+        if self.any_file_is_outdated(minimum_timestamp):
+            with sync_playwright() as playwright:
+                page = self.playwright_browser(playwright).new_page()
+                self.download_show(page, minimum_timestamp)
+                self.download_seasons(page, minimum_timestamp)
+                self.download_episodes(page, minimum_timestamp)
+
+    def download_show(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
         show_html_path = self.path_from_url(self.show_url())
         if show_html_path.outdated(minimum_timestamp):
-            page = self.playwright_browser(playwright).new_page()
             self.go_to_page_logged_in(page, self.show_url())
 
             # Need to make sure this is the first season
@@ -149,29 +156,25 @@ class HidiveShow(ScraperShowShared, HidiveBase):
 
             show_html_path.write(page.content())
 
-        self.download_seasons(playwright, minimum_timestamp)
-
-    def download_seasons(self, playwright: Playwright, minimum_timestamp: Optional[datetime] = None) -> None:
+    def download_seasons(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
         for partial_season_url in self.season_urls_from_show_html():
             season_html_path = self.path_from_url(partial_season_url)
 
             if season_html_path.outdated(minimum_timestamp):
-                page = self.playwright_browser(playwright).new_page()
                 page.goto(self.DOMAIN + partial_season_url)
                 season_html_path.write(page.content())
 
-            self.download_episodes(playwright, season_html_path)
-
     # Download every episode because somwe information is only available on the episode pages
-    def download_episodes(self, playwright: Playwright, season_html_path: ExtendedPath) -> None:
-        for partial_episode_url in self.episode_urls_from_season_html(season_html_path):
-            episode_html_path = self.path_from_url(partial_episode_url)
-            if not episode_html_path.exists():
-                page = self.playwright_browser(playwright).new_page()
+    #   For example, video duration is only showed on the episode page while logged in
+    def download_episodes(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
+        for partial_season_url in self.season_urls_from_show_html():
+            season_html_path = self.path_from_url(partial_season_url)
 
-                # Episode length is only shown when logged in
-                self.go_to_page_logged_in(page, self.DOMAIN + partial_episode_url)
-                episode_html_path.write(page.content())
+            for partial_episode_url in self.episode_urls_from_season_html(season_html_path):
+                episode_html_path = self.path_from_url(partial_episode_url)
+                if not episode_html_path.up_to_date(minimum_timestamp):
+                    self.go_to_page_logged_in(page, self.DOMAIN + partial_episode_url)
+                    episode_html_path.write(page.content())
 
     def update_all(
         self,

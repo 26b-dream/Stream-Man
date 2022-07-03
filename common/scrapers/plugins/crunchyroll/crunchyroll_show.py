@@ -149,6 +149,7 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
                 page = self.playwright_browser(playwright).new_page()
                 page.on("response", lambda request: self.download_response(request))
                 self.download_show(page, minimum_timestamp)
+                self.download_seasons(page, minimum_timestamp)
                 page.close()
 
     def download_show(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
@@ -172,8 +173,6 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
 
             # Close season selector to make season downloadnig more consistent
             page.click_if_exists("div[class='season-info']")
-
-        self.download_seasons(page, minimum_timestamp)
 
     def find_matching_season(self, page: Page, season_name: str) -> ElementHandle:
         """Finding matches season can sometimes give problems so make this a seperate function for easier debugging"""
@@ -274,12 +273,12 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
         show_seasons_json_path = self.path_from_url(self.show_seasons_json_url())
         show_seasons_json_parsed = show_seasons_json_path.parsed_json()
         for season in show_seasons_json_parsed["items"]:
-            season_json_path = self.path_from_url(self.season_json_url(season["id"]))
+            season_json_url = self.season_json_url(season["id"])
+            season_json_path = self.path_from_url(season_json_url)
             season_json_parsed = season_json_path.parsed_json()
-            parsed_episode = season_json_parsed["items"][0]
             season_info = Season().get_or_new(season_id=season["id"], show=self.show_info)[0]
 
-            for i, episode in enumerate(parsed_episode["items"]):
+            for i, episode in enumerate(season_json_parsed["items"]):
                 episode_info = Episode().get_or_new(episode_id=episode["id"], season=season_info)[0]
 
                 if not episode_info.information_up_to_date(

@@ -103,8 +103,6 @@ class HuluShow(ScraperShowShared, HuluBase):
 
     def download_response(self, response: Response) -> None:
         if "/content/v5/hubs/" in response.url:
-            print(self.show_json_url())
-            print(response.url)
             parsed_json = response.json()
             # Save show files
             if self.show_json_url() in response.url:
@@ -302,6 +300,8 @@ class HuluShow(ScraperShowShared, HuluBase):
                     episode["premiere_date"], "%Y-%m-%dT%H:%M:%SZ"
                 ).astimezone()
                 episode_info.number = episode["number"]
+                # TODO: Is this good or should I use an enumerate
+                episode_info.sort_order = episode["number"]
                 episode_info.duration = episode["duration"]
 
                 episode_info.add_timestamps_and_save(season_json_path)
