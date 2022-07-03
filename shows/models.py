@@ -29,15 +29,16 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
 
     class Meta:  # type: ignore - Meta class always throws type errors
         db_table = "show"
-        constraints = [models.UniqueConstraint(fields=["website", "show_id"], name="website__show_id")]
         ordering = ["name"]
+        unique_together = [["website", "show_id"], ["website", "show_id_2"]]
 
     website = models.CharField(max_length=64)  # Website the show is from
 
-    show_id = models.CharField(max_length=64)
+    show_id = models.CharField(max_length=64, null=True)
     # Alternative show_id used for cross referencing CrunchyRoll and Justwatch
     show_id_2 = models.CharField(max_length=64, null=True)
     name = models.CharField(max_length=256)
+    media_type = models.CharField(max_length=256, null=True)
     description = models.TextField()
     image_url = models.CharField(max_length=256)
     thumbnail_url = models.CharField(max_length=255)
@@ -71,7 +72,7 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
         if episode := Episode.objects.filter(season__show=self).order_by("release_date").reverse():
             return episode
         else:
-            raise ValueError("Show has no airing date")
+            raise ValueError(f"Show {self.name} {self.id} has no airing date")
 
 
 class Season(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstract models always throws type errors
@@ -80,15 +81,7 @@ class Season(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abs
 
     class Meta:  # type: ignore - Meta class always throws type errors
         db_table = "season"
-        constraints = [
-            models.UniqueConstraint(
-                fields=[
-                    "show",
-                    "season_id",
-                ],
-                name="show__season_id",
-            )
-        ]
+        unique_together = [["show", "season_id"]]
         ordering = ["show", "sort_order"]
 
     show = models.ForeignKey(Show, on_delete=models.CASCADE)  # Parent show
@@ -114,7 +107,7 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
 
     class Meta:  # type: ignore - Meta class always throws type errors
         db_table = "episode"
-        constraints = [models.UniqueConstraint(fields=["season", "episode_id"], name="season__episode_id")]
+        unique_together = [["season", "episode_id"]]
         ordering = ["season", "sort_order"]
 
     season = models.ForeignKey(Season, on_delete=models.CASCADE)  # Parent season
@@ -199,7 +192,7 @@ class EpisodeWatch(models.Model):
         # Technically you can watch an episode more than once in a single day
         # It's far more likely to accidently mark an episode as watched twice in the same day
         # Adding a unique constraint here will avoid the possibility of accidently double-watching an episode
-        constraints = [models.UniqueConstraint(fields=["episode", "watch_date"], name="episode__watch_date")]
+        unique_together = [["episode", "watch_date"]]
         ordering = ["watch_date"]
 
     episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
