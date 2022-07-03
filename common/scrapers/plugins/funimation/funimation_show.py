@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response, Page
-    from typing import Optional, Any
+    from typing import Optional
 
 
 # Standard Library
@@ -203,6 +203,15 @@ class FunimationShow(FunimationBase, ScraperShowShared):
 
                 raise ValueError(f"Unable to find matching season for {season_id}, {season_name}")
 
+    def update_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)
+
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -221,7 +230,6 @@ class FunimationShow(FunimationBase, ScraperShowShared):
                     self.show_info.image_url = image["path"]
 
             self.show_info.add_timestamps_and_save(show_json_path)
-        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
 
     def update_seasons(
         self,
@@ -248,45 +256,57 @@ class FunimationShow(FunimationBase, ScraperShowShared):
                 season_info.sort_order = season["order"]
                 season_info.add_timestamps_and_save(season_json_path)
 
-            self.update_episodes(season_info, season_json_parsed, minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_episodes(
         self,
-        season_info: Season,
-        season_json_parsed: dict[str, Any],
         minimum_info_timestamp: Optional[datetime],
         minimum_modified_timestamp: Optional[datetime],
     ):
-        # Import episodes
-        for i, episode in enumerate(season_json_parsed["episodes"]):
-            episode_info = Episode().get_or_new(episode_id=episode["id"], season=season_info)[0]
-            if not episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
-                episode_info.sort_order = i
-                episode_info.name = episode["name"]["en"]
-                episode_info.number = episode["episodeNumber"] or episode["type"]
-                episode_info.description = episode["synopsis"]["en"]
-                episode_info.duration = episode["duration"]
-                # Some episodes do not have a release date so check if it exists first
-                #   See: https://www.funimation.com/shows/gal-dino/
-                # Some episodes have a release date that makes no sense and shows 29679264000000 as the timestamp
-                #   See: https://www.funimation.com/shows/steinsgate/
-                raw_date = episode["releaseDate"]
-                if raw_date and raw_date != 29679264000000:
-                    # Timestamp is has 3 extra zeroes so divide by 100
-                    episode_info.release_date = datetime.fromtimestamp(raw_date / 1000).astimezone()
-                else:
-                    # Go through all audio track release datges and keep only the oldest one
-                    for start_date in episode["videoOptions"]["audioLanguages"]["US"]["all"]:
-                        date_string = start_date["start"].removesuffix(".000Z")
-                        parsed_date = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S").astimezone()
-                        if episode_info.release_date is None or parsed_date < episode_info.release_date:
-                            episode_info.release_date = parsed_date
+        show_json_path = self.path_from_url(self.show_json_url())
+        parsed_show_json = show_json_path.parsed_json()
+        for season in parsed_show_json["index"]["seasons"]:
+            season_id = season["contentId"]
 
-                for image in episode["images"]:
-                    if image["key"] == "Episode Thumbnail":
-                        episode_info.image_url = image["path"]
-                        # This thumbnail is kinda big at 720p, but it's the size used on Funimation's actual site
-                        episode_info.thumbnail_url = image["path"].replace("/upload/", "/upload/w_1280,q_60,c_fill/")
+            # Ignore entries with no episodes
+            if season["episodes"] == []:
+                continue
 
-                # No seperate file for episodes so just use the season timestamp
-                episode_info.add_timestamps_and_save(season_info.info_timestamp)
+            season_json_url = self.season_json_url(season_id)
+            season_json_path = self.path_from_url(season_json_url)
+            season_json_parsed = season_json_path.parsed_json()
+
+            season_info = Season().get_or_new(season_id=season_json_parsed["id"], show=self.show_info)[0]
+            # Import episodes
+            for i, episode in enumerate(season_json_parsed["episodes"]):
+                episode_info = Episode().get_or_new(episode_id=episode["id"], season=season_info)[0]
+                if not episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
+                    episode_info.sort_order = i
+                    episode_info.name = episode["name"]["en"]
+                    episode_info.number = episode["episodeNumber"] or episode["type"]
+                    episode_info.description = episode["synopsis"]["en"]
+                    episode_info.duration = episode["duration"]
+                    # Some episodes do not have a release date so check if it exists first
+                    #   See: https://www.funimation.com/shows/gal-dino/
+                    # Some episodes have a release date that makes no sense and shows 29679264000000 as the timestamp
+                    #   See: https://www.funimation.com/shows/steinsgate/
+                    raw_date = episode["releaseDate"]
+                    if raw_date and raw_date != 29679264000000:
+                        # Timestamp is has 3 extra zeroes so divide by 100
+                        episode_info.release_date = datetime.fromtimestamp(raw_date / 1000).astimezone()
+                    else:
+                        # Go through all audio track release datges and keep only the oldest one
+                        for start_date in episode["videoOptions"]["audioLanguages"]["US"]["all"]:
+                            date_string = start_date["start"].removesuffix(".000Z")
+                            parsed_date = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S").astimezone()
+                            if episode_info.release_date is None or parsed_date < episode_info.release_date:
+                                episode_info.release_date = parsed_date
+
+                    for image in episode["images"]:
+                        if image["key"] == "Episode Thumbnail":
+                            episode_info.image_url = image["path"]
+                            # This thumbnail is kinda big at 720p, but it's the size used on Funimation's actual site
+                            episode_info.thumbnail_url = image["path"].replace(
+                                "/upload/", "/upload/w_1280,q_60,c_fill/"
+                            )
+
+                    # No seperate file for episodes so just use the season timestamp
+                    episode_info.add_timestamps_and_save(season_info.info_timestamp)

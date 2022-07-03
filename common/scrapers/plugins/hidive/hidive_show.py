@@ -173,6 +173,15 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 self.go_to_page_logged_in(page, self.DOMAIN + partial_episode_url)
                 episode_html_path.write(page.content())
 
+    def update_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)
+
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -188,8 +197,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
             self.show_info.image_url = self.show_info.thumbnail_url
             self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
 
-        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_seasons(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -199,7 +206,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
             # The Show & Season Regex are basically the same so re-using this even though names don't match
             season_id = re.strict_search(self.SHOW_URL_REGEX, season_url).group("show_id")
             season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
-            season_html_path = self.path_from_url(season_url)
 
             if not season_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                 parsed_season_json = self.json_from_html_file(self.path_from_url(season_url))
@@ -211,64 +217,61 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 season_info.thumbnail_url = season_info.image_url
                 season_info.add_timestamps_and_save(self.path_from_url(season_url))
 
-        # Episode information must be imported after all seasons are imported
-        # This is required because sometimes seasons include episodes from other seasons
-        for i, season_url in enumerate(self.season_urls_from_show_html()):
-            season_html_path = self.path_from_url(season_url)
-            self.update_episodes(season_html_path, minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_episodes(
         self,
-        season_html_path: ExtendedPath,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        for i, episode_url in enumerate(self.episode_urls_from_season_html(season_html_path)):
-            # Sometimes episodes are listed multiple times for different seasons
-            # To compensate for this determine the season for each episode instead of assuming it is correct
-            season_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("season_id")
-            season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
+        # Episode information must be imported after all seasons are imported
+        # This is required because sometimes seasons include episodes from other seasons
+        for season_url in self.season_urls_from_show_html():
+            season_html_path = self.path_from_url(season_url)
+            for i, episode_url in enumerate(self.episode_urls_from_season_html(season_html_path)):
+                # Sometimes episodes are listed multiple times for different seasons
+                # To compensate for this determine the season for each episode instead of assuming it is correct
+                season_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("season_id")
+                season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
 
-            episode_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("episode_id")
-            episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
+                episode_id = re.strict_search(self.EPISODE_URL_REGEX, episode_url).group("episode_id")
+                episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
 
-            # If information is upt to date nothing needs to be done
-            if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
-                return
+                # If information is upt to date nothing needs to be done
+                if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
+                    return
 
-            episode_json = self.json_from_html_file(self.path_from_url(episode_url))
-            episode_html = self.path_from_url(episode_url).parsed_html()
+                episode_json = self.json_from_html_file(self.path_from_url(episode_url))
+                episode_html = self.path_from_url(episode_url).parsed_html()
 
-            if episode_json["@type"] == "Movie":
-                # For movies jsut re-use the movie name for the episode
-                episode_info.name = episode_json["name"]
-            else:
-                episode_info.name = episode_json["partOfTVSeries"]["name"]
+                if episode_json["@type"] == "Movie":
+                    # For movies jsut re-use the movie name for the episode
+                    episode_info.name = episode_json["name"]
+                else:
+                    episode_info.name = episode_json["partOfTVSeries"]["name"]
 
-            episode_info.name = episode_json.get("partOfTVSeries", episode_json)["name"]
+                episode_info.name = episode_json.get("partOfTVSeries", episode_json)["name"]
 
-            # This image seems consistent I guess
-            img = episode_html.strict_select("div[class='default-img'] img")
-            episode_info.thumbnail_url = img[i].strict_get("src")
-            episode_info.image_url = episode_info.thumbnail_url.replace("256x144", "512x288")
+                # This image seems consistent I guess
+                img = episode_html.strict_select("div[class='default-img'] img")
+                episode_info.thumbnail_url = img[i].strict_get("src")
+                episode_info.image_url = episode_info.thumbnail_url.replace("256x144", "512x288")
 
-            # HIDIVE lists episode airing dates in just this one location
-            title_string = episode_html.strict_select("div[id='StreamTitleDescription']>h2")[0].text
-            date_string = re.strict_search(r"Premiere: (\d{1,2}\/\d{1,2}\/\d{4})", title_string).group(1)
-            episode_info.release_date = datetime.strptime(date_string, "%m/%d/%Y").astimezone()
+                # HIDIVE lists episode airing dates in just this one location
+                title_string = episode_html.strict_select("div[id='StreamTitleDescription']>h2")[0].text
+                date_string = re.strict_search(r"Premiere: (\d{1,2}\/\d{1,2}\/\d{4})", title_string).group(1)
+                episode_info.release_date = datetime.strptime(date_string, "%m/%d/%Y").astimezone()
 
-            # Description is only on the html file
-            episode_info.description = episode_html.strict_select_one("div[id='StreamTitleDescription'] p").text
-            episode_info.number = episode_json.get("episodeNumber", "Unknown")
+                # Description is only on the html file
+                episode_info.description = episode_html.strict_select_one("div[id='StreamTitleDescription'] p").text
+                episode_info.number = episode_json.get("episodeNumber", "Unknown")
 
-            # Duration is only available from the html file
-            duration_string = episode_html.strict_select_one("div[class*='rmp-duration']").text
-            split_values = duration_string.split(":")
-            if len(split_values) == 3:
-                hours, minutes, seconds = split_values
-            else:
-                hours = 0
-                minutes, seconds = split_values
-            episode_info.duration = int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
+                # Duration is only available from the html file
+                duration_string = episode_html.strict_select_one("div[class*='rmp-duration']").text
+                split_values = duration_string.split(":")
+                if len(split_values) == 3:
+                    hours, minutes, seconds = split_values
+                else:
+                    hours = 0
+                    minutes, seconds = split_values
+                episode_info.duration = int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
 
-            episode_info.add_timestamps_and_save(self.path_from_url(episode_url))
+                episode_info.add_timestamps_and_save(self.path_from_url(episode_url))

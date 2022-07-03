@@ -54,13 +54,9 @@ class ScraperUpdateShared(ScraperShared, ABC):
 
 
 class ScraperShowShared(ScraperShared, ABC):
-
-    # Constants
     WEBSITE: str
     DOMAIN: str
-    JUSTWATCH_PROVIDER_IDS: list[
-        int
-    ]  # This is a list because VRV pulls from CrunchyRoll, so to keep it up to date CrunchyRoll and VRV need to be updated
+    JUSTWATCH_PROVIDER_IDS: list[int]  # This is a list because some websites pull fronm multiple websites
     SHOW_URL_REGEX: Pattern[str]
     FAVICON_URL: str
 
@@ -71,12 +67,15 @@ class ScraperShowShared(ScraperShared, ABC):
 
         # Construct information from Show (database entry)
         else:
-            self.show_info = show_identifier
-            self.show_id = show_identifier.show_id
+            self.get_id_from_show_oobject(show_identifier)
 
     def get_id_from_show_url(self, show_url: str) -> None:
         self.show_id = re.strict_search(self.SHOW_URL_REGEX, show_url).group("show_id")
         self.show_info = Show().get_or_new(show_id=self.show_id, website=self.WEBSITE)[0]
+
+    def get_id_from_show_oobject(self, show_identifier: Show) -> None:
+        self.show_info = show_identifier
+        self.show_id = show_identifier.show_id
 
     @transaction.atomic
     def import_all(
@@ -126,7 +125,10 @@ class ScraperShowShared(ScraperShared, ABC):
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+        # Ignore the types here because these will be implemebted in the subclasses if they are used
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)  # type: ignore
+        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)  # type: ignore
+        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)  # type: ignore
 
     def wait_for_files(self, page: Page, *files: ExtendedPath) -> None:
         for file in files:
@@ -147,12 +149,4 @@ class ScraperShowShared(ScraperShared, ABC):
     @abstractmethod
     @cache
     def show_url(self) -> str:
-        ...
-
-    @abstractmethod
-    def update_show(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
         ...

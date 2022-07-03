@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response, Page, ElementHandle
-    from typing import Optional, Any, Literal
+    from typing import Optional, Literal
 
 # Standard Library
 from datetime import datetime
@@ -218,6 +218,15 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
 
                 self.season_html_path(season["id"]).write(page.content())
 
+    def update_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
+        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)
+
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
@@ -236,9 +245,8 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
             self.show_info.thumbnail_url = parsed_show["images"]["poster_wide"][0][0]["source"]
             self.show_info.image_url = parsed_show["images"]["poster_wide"][0][-1]["source"]
             self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
-        self.update_season(minimum_info_timestamp, minimum_modified_timestamp)
 
-    def update_season(
+    def update_seasons(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
@@ -257,36 +265,41 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
                 season_info.name = parsed_episode["season_title"]
                 season_info.sort_order = sort_order
                 season_info.add_timestamps_and_save(season_json_path)
-            self.update_episode(season_info, season_json_parsed, minimum_info_timestamp, minimum_modified_timestamp)
 
-    def update_episode(
+    def update_episodes(
         self,
-        season_info: Season,
-        episode_json_parsed: dict[str, Any],
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        for i, episode in enumerate(episode_json_parsed["items"]):
-            episode_info = Episode().get_or_new(episode_id=episode["id"], season=season_info)[0]
+        show_seasons_json_path = self.path_from_url(self.show_seasons_json_url())
+        show_seasons_json_parsed = show_seasons_json_path.parsed_json()
+        for season in show_seasons_json_parsed["items"]:
+            season_json_path = self.path_from_url(self.season_json_url(season["id"]))
+            season_json_parsed = season_json_path.parsed_json()
+            parsed_episode = season_json_parsed["items"][0]
+            season_info = Season().get_or_new(season_id=season["id"], show=self.show_info)[0]
 
-            if not episode_info.information_up_to_date(
-                minimum_info_timestamp,
-                minimum_modified_timestamp,
-            ):
-                episode_info.sort_order = i
-                episode_info.name = episode["title"]
-                episode_info.number = episode["episode"]
-                episode_info.description = episode["description"]
-                episode_info.duration = episode["duration_ms"] / 1000
+            for i, episode in enumerate(parsed_episode["items"]):
+                episode_info = Episode().get_or_new(episode_id=episode["id"], season=season_info)[0]
 
-                episode_info.release_date = datetime.strptime(episode["episode_air_date"], "%Y-%m-%dT%H:%M:%S%z")
-                # Every now and then a show just won't have thumbnails
-                # See: https://beta.crunchyroll.com/series/G79H23VD4/im-kodama-kawashiri (May be updated later)
-                if episode_images := episode.get("images"):
-                    # [0] is the first thumbnail design (as far as I can tell there is always just one)
-                    # [0][0] the first image listed is the lowest resolution
-                    # [0][1] the last image listed is the highest resolution
-                    episode_info.thumbnail_url = episode_images["thumbnail"][0][0]["source"]
-                    episode_info.image_url = episode_images["thumbnail"][0][-1]["source"]
-                # No seperate file for episodes so just use the season file
-                episode_info.add_timestamps_and_save(season_info.info_timestamp)
+                if not episode_info.information_up_to_date(
+                    minimum_info_timestamp,
+                    minimum_modified_timestamp,
+                ):
+                    episode_info.sort_order = i
+                    episode_info.name = episode["title"]
+                    episode_info.number = episode["episode"]
+                    episode_info.description = episode["description"]
+                    episode_info.duration = episode["duration_ms"] / 1000
+
+                    episode_info.release_date = datetime.strptime(episode["episode_air_date"], "%Y-%m-%dT%H:%M:%S%z")
+                    # Every now and then a show just won't have thumbnails
+                    # See: https://beta.crunchyroll.com/series/G79H23VD4/im-kodama-kawashiri (May be updated later)
+                    if episode_images := episode.get("images"):
+                        # [0] is the first thumbnail design (as far as I can tell there is always just one)
+                        # [0][0] the first image listed is the lowest resolution
+                        # [0][1] the last image listed is the highest resolution
+                        episode_info.thumbnail_url = episode_images["thumbnail"][0][0]["source"]
+                        episode_info.image_url = episode_images["thumbnail"][0][-1]["source"]
+                    # No seperate file for episodes so just use the season file
+                    episode_info.add_timestamps_and_save(season_info.info_timestamp)
