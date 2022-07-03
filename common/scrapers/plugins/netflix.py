@@ -1,3 +1,4 @@
+# TODO: This scraper doesn't really work, needs to be updated
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -42,24 +43,22 @@ class NetflixBase:
 class NetflixShow(NetflixBase, ScraperShowShared):
     FAVICON_URL = "https://assets.nflxext.com/ffe/siteui/common/icons/nficon2016.ico"
 
+    @cache
     def path_from_url(self, url: str, suffix: str = ".html") -> ExtendedPath:
         url = url.removeprefix(self.DOMAIN)
         url = url.removeprefix("/")
         return DOWNLOADED_FILES_DIR / self.WEBSITE / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(suffix)
 
-    @cache  # Values should never change
+    @cache
     def show_url(self) -> str:
         return f"{self.DOMAIN}/title/{self.show_id}"
 
-    @cache  # Values should never change
-    def episode_url(self, episode: Episode | int | str) -> str:
-        if isinstance(episode, Episode):
-            return f"{self.DOMAIN}/watch/{episode.episode_id}"
-        else:
-            return f"{self.DOMAIN}/watch/{episode}"
+    @cache
+    def episode_url(self, episode: Episode) -> str:
+        return f"{self.DOMAIN}/watch/{episode.episode_id}"
 
     # There is no seperate URL for seasons so make them a subdirectory of the show
-    @cache  # Values should never change
+    @cache
     def season_html_path(self, season: str) -> ExtendedPath:
         return self.path_from_url(f"{self.show_url()}/{season}", ".html")
 
@@ -89,12 +88,9 @@ class NetflixShow(NetflixBase, ScraperShowShared):
             # Entry is more reliable one character at a time for some reason so loop through each character in the PIN
             for number in str(NetflixSecrets.PIN):
                 # Netflix is screwing with me try slowing down pin entry
-                time.sleep(0.256)
+                time.sleep(1.8742)
                 page.type("div[class='pin-input-container']", number)
             page.wait_for_load_state("networkidle")
-
-            # Never automatically redirects it seems like
-            page.goto(self.show_url(), wait_until="networkidle")
 
             return True
         return False
@@ -158,7 +154,6 @@ class NetflixShow(NetflixBase, ScraperShowShared):
         # Movies require no additional downloads so return early
         if self.is_movie():
             return
-            self.__download_movie(playwright)
         # Download seasons for TV shows
         else:
             self.download_seasons(playwright, minimum_timestamp)
@@ -210,9 +205,7 @@ class NetflixShow(NetflixBase, ScraperShowShared):
 
                 # Response doesn't trigger consistently to download season json file
                 # Do a pointless query selector until the file exists to cause response to trigger
-                while not season_json_path.exists():
-                    page.query_selector("html")
-                    time.sleep(1)
+                self.wait_for_files(page, season_json_path)
 
                 # TODO: Verification
                 season_html_path.write(page.content())
@@ -340,6 +333,7 @@ class NetflixShow(NetflixBase, ScraperShowShared):
             # TODO: Is there a bigger image I can use?
             self.show_info.image_url = self.show_info.thumbnail_url
             self.show_info.add_timestamps_and_save(show_html_path)
+        self.update_season(minimum_info_timestamp, minimum_modified_timestamp)
 
     def update_season(
         self,
@@ -359,15 +353,16 @@ class NetflixShow(NetflixBase, ScraperShowShared):
                 season_info.name = season[1]["summary"]["value"]["name"]
                 season_info.sort_order = i
                 season_info.add_timestamps_and_save(show_json_path)
+        self.update_episode(minimum_info_timestamp, minimum_modified_timestamp)
 
     def update_episode(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
         minimum_modified_timestamp: Optional[datetime] = None,
     ) -> None:
-        show_json_parsed = self.path_from_url(self.show_url(), ".json").parsed_json()
+        show_json_path = self.path_from_url(self.show_url(), ".json")
+        show_json_parsed = show_json_path.parsed_json()
         show_json_parsed_seasons = show_json_parsed["jsonGraph"]["seasons"]
-
         # Go thoguh each season on the show json file
         for _season_id, season_json_parsed in show_json_parsed_seasons.items():
             season_name = season_json_parsed["summary"]["value"]["name"]
@@ -408,7 +403,7 @@ class NetflixShow(NetflixBase, ScraperShowShared):
 
                     episode_info.image_url = episode_entry["interestingMoment"]["_342x192"]["webp"]["value"]["url"]
                     episode_info.thumbnail_url = episode_info.image_url
-                    episode_info.add_timestamps_and_save(self.directory)
+                    episode_info.add_timestamps_and_save(show_json_path)
 
     # # Download the episodes because they incude a bigger thumbnail not present anywhere else
     # # When video autoplays the thumbnail is not sent so just don't call this function for now
