@@ -146,13 +146,38 @@ class ScraperShowShared(ScraperShared, ABC):
     @abstractmethod
     @cache
     def episode_url(self, episode: Episode) -> str:
-        ...
+        return "Missing Episode URL"
 
     @abstractmethod
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        ...
+        pass
 
     @abstractmethod
     @cache
     def show_url(self) -> str:
-        ...
+        return "Missing Show URL"
+
+
+class MissingShowClass(ScraperShowShared):
+    WEBSITE = "WEBSITE NAME"
+
+    def __init__(self, show_identifier: Show | str) -> None:
+        pass
+
+    def import_all(
+        self,
+        minimum_info_timestamp: Optional[datetime] = None,
+        minimum_modified_timestamp: Optional[datetime] = None,
+    ) -> None:
+        pass
+
+    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
+        pass
+
+    @cache
+    def episode_url(self, episode: Episode) -> str:
+        return "Missing Episode URL"
+
+    @cache
+    def show_url(self) -> str:
+        return "Missing Show URL"

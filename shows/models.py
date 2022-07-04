@@ -47,6 +47,7 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
     def __str__(self) -> str:
         return self.name
 
+    @cache  # Should never change and is safe to cache
     def scraper_instance(self) -> ScraperShowShared:
         # Import this here as an easy work-a-around for circular imports
         # Common

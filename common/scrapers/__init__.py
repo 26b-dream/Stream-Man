@@ -13,7 +13,11 @@ import importlib
 
 # Common
 from common.extended_path import ExtendedPath
-from common.scrapers.shared import ScraperShowShared, ScraperUpdateShared
+from common.scrapers.shared import (
+    MissingShowClass,
+    ScraperShowShared,
+    ScraperUpdateShared,
+)
 
 # Import all plugins
 plugins_dir = ExtendedPath(__file__).parent / "plugins"
@@ -40,7 +44,10 @@ def __url_to_class(url: str) -> ScraperShowShared:
 
 
 def __show_to_class(show: Show) -> ScraperShowShared:
-    return SHOW_SUBCLASSES[show.website](show)
+    try:
+        return SHOW_SUBCLASSES[show.website](show)
+    except KeyError:
+        return MissingShowClass(show)
 
 
 def Scraper(show_identifier: Show | str) -> ScraperShowShared:
