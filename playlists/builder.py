@@ -153,6 +153,20 @@ class Builder:
         def shuffle(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
             random.shuffle(grouped_episodes)
 
+        # TODO: This is is slow, can be easily sped up, this is just a proof of concept example
+        @classmethod
+        def weighted_shuffle(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
+            # Stick all episodes in one list
+            all_episodes: list[Episode] = []
+            for _show, episodes in grouped_episodes:
+                all_episodes += episodes
+
+            first_show = random.sample(all_episodes, 1)[0].season.show
+
+            for show, episodes in grouped_episodes:
+                if first_show == show:
+                    grouped_episodes.insert(0, grouped_episodes.pop(grouped_episodes.index((show, episodes))))
+
 
 for x in [Builder.ShowOrder, Builder.Resort, Builder.ChangeShowIf, Builder.EpisodeOrder]:
     for method in [method for method in dir(x) if method.startswith("_") is False]:
