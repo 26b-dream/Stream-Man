@@ -34,7 +34,7 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
 
     website = models.CharField(max_length=64)  # Website the show is from
 
-    show_id = models.CharField(max_length=64, null=True)
+    show_id = models.CharField(max_length=64)
     # Alternative show_id used for cross referencing CrunchyRoll and Justwatch
     show_id_2 = models.CharField(max_length=64, null=True)
     name = models.CharField(max_length=256)
