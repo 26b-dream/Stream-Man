@@ -70,11 +70,17 @@ class ScraperShowShared(ScraperShared, ABC):
             self.get_id_from_show_oobject(show_identifier)
 
     def get_id_from_show_url(self, show_url: str) -> None:
-        self.show_id = re.strict_search(self.SHOW_URL_REGEX, show_url).group("show_id")
+        temp = re.strict_search(self.SHOW_URL_REGEX, show_url).group("show_id")
+        if isinstance(temp, str):
+            self.show_id = str(temp)
+        else:  # TODO: This is actually impossible but this is here for pylance
+            raise ValueError("No show ID found")
+
         self.show_info = Show().get_or_new(show_id=self.show_id, website=self.WEBSITE)[0]
 
     def get_id_from_show_oobject(self, show_identifier: Show) -> None:
         self.show_info = show_identifier
+
         self.show_id = show_identifier.show_id
 
     @transaction.atomic
