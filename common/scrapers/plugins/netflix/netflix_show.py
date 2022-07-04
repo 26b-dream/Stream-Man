@@ -79,7 +79,6 @@ class NetflixShow(NetflixBase, ScraperShowShared):
 
         return False
 
-    @cache
     def parsed_specific_season_json(self, body: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
         test = self.maybe_parsed_specific_season_json(body)
         if test:
@@ -87,7 +86,6 @@ class NetflixShow(NetflixBase, ScraperShowShared):
         else:
             raise Exception("No season info found")
 
-    @cache
     def maybe_parsed_specific_season_json(self, body: Dict[str, Any]) -> Optional[tuple[str, Dict[str, Any]]]:
         for season_id, season in body["jsonGraph"].get("seasons", {}).items():
             if season.get("episodes"):
