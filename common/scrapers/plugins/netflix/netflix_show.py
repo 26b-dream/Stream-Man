@@ -1,10 +1,7 @@
-# TODO: This scraper doesn't really work, needs to be updated
+# TODO: This scraper is really messy, it works, but the updating code is a mess
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
-# Standard Library
-from multiprocessing.sharedctypes import Value
 
 if TYPE_CHECKING:
     from playwright.sync_api._generated import Response
@@ -375,7 +372,7 @@ class NetflixShow(NetflixBase, ScraperShowShared):
                 season_info = Season().get_or_new(season_id=self.show_id, show=self.show_info)[0]
                 episode_info = Episode().get_or_new(episode_id=self.show_id, season=season_info)[0]
             else:  # This is impossible but it fixes a Pylance type error
-                raise Value("No show id found")
+                raise ValueError("No show id found")
 
             if not season_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                 season_info.name = self.show_info.name
