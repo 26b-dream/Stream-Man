@@ -159,7 +159,8 @@ class HuluShow(ScraperShowShared, HuluBase):
             if component["name"] == "Episodes":
                 return component["items"]
 
-        raise ValueError("No season list found")
+        # If no seasons are found return an empty list that is falsey
+        return []
 
     def any_file_is_outdated(self, minimum_timestamp: Optional[datetime] = None) -> bool:
         if self.any_show_file_is_outdated(minimum_timestamp):
@@ -195,14 +196,15 @@ class HuluShow(ScraperShowShared, HuluBase):
         if self.any_show_file_is_outdated(minimum_timestamp):
             self.go_to_page_logged_in(page, self.show_url())
             # Re-open season selector for the next loop and to embed it into the html
-            page.click("div[data-automationid='detailsdropdown-selectedvalue']")
+            # Movies do not have a season selector so only click it if it exists
+            page.click_if_exists("div[data-automationid='detailsdropdown-selectedvalue']")
 
             self.wait_for_files(page, self.path_from_url(self.show_json_url()))
             show_html_path = self.path_from_url(self.show_url())
             show_html_path.write(page.content())
 
             # Close season selector for a clean slate for season downloading
-            page.click("div[data-automationid='detailsdropdown-selectedvalue']")
+            page.click_if_exists("div[data-automationid='detailsdropdown-selectedvalue']")
 
     def download_seasons(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
         # Go through each season
@@ -243,10 +245,11 @@ class HuluShow(ScraperShowShared, HuluBase):
             self.show_info.name = parsed_show_json["name"]
             self.show_info.description = parsed_show_json["details"]["entity"]["description"]
 
+            base_img_url = parsed_show_json["artwork"]["program.tile"]["path"]
             # These image resolutions are used by Hulu and should already be generated
-            base_img_url = parsed_show_json["artwork"]["detail.horizontal.hero"]["path"]
-            self.show_info.image_url = base_img_url + '&operations=[{"resize":"1920x1920|max"},{"format":"webp"}]'
-            self.show_info.thumbnail_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
+            # The images are the one returned in Google image searches
+            self.show_info.image_url = base_img_url + "&size=1200x630&format=jpeg"
+            self.show_info.thumbnail_url = base_img_url + "&size=600x338&format=jpeg"
             self.show_info.show_id_2 = parsed_show_json["id"]
             self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
 
@@ -267,6 +270,16 @@ class HuluShow(ScraperShowShared, HuluBase):
                 # Hulu does not have season specific images so keep them blank
 
                 season_info.add_timestamps_and_save(season_json_path)
+        # Movies don't have any seasons so just copy information from the show
+        if not self.season_list():
+            season_info = Season().get_or_new(season_id=self.show_id, show=self.show_info)[0]
+            season_info.name = "Movie"
+            # This sometimes leads to wacky numbers for things like specials, but it works fine
+            season_info.number = "0"
+            season_info.sort_order = 0
+
+            show_json_path = self.path_from_url(self.show_json_url())
+            season_info.add_timestamps_and_save(show_json_path)
 
     def update_episodes(
         self,
@@ -279,29 +292,50 @@ class HuluShow(ScraperShowShared, HuluBase):
             parsed_season_json = season_json_path.parsed_json()
             season_id = parsed_season_json["id"].split("::")[1]
             season_info = Season().get_or_new(season_id=season_id, show=self.show_info)[0]
-
             parsed_season_json = season_json_path.parsed_json()
-            for episode in parsed_season_json["items"]:
-                episode_id = episode["id"]
-                episode_info = Episode().get_or_new(episode_id=episode_id, season=season_info)[0]
 
-                # If information is upt to date nothing needs to be done
+            for episode in parsed_season_json["items"]:
+                episode_info = Episode().get_or_new(episode_id=episode["id"], season=season_info)[0]
+
+                # If information is up to date nothing needs to be done
                 if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                     return
 
-                episode_info.name = episode["name"]
-                episode_info.description = episode["description"]
+                self.add_shared_episode_info(episode_info, episode)
 
-                base_img_url = episode["artwork"]["video.horizontal.hero"]["path"]
-                # The only image resolutions used by Hulu that is auto-generated is 600x600 as far as I can tell
-                episode_info.thumbnail_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
-                episode_info.image_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
-                episode_info.release_date = datetime.strptime(
-                    episode["premiere_date"], "%Y-%m-%dT%H:%M:%SZ"
-                ).astimezone()
+                episode_info.name = episode["name"]
                 episode_info.number = episode["number"]
-                # TODO: Is this good or should I use an enumerate
+                # TODO: Is this good or should I use the index of the episode instead?
                 episode_info.sort_order = episode["number"]
-                episode_info.duration = episode["duration"]
 
                 episode_info.add_timestamps_and_save(season_json_path)
+        # Movies only have 1 episodes so just copy information from the show
+        if not self.season_list():
+            season_info = Season().get_or_new(season_id=self.show_id, show=self.show_info)[0]
+            episode_info = Episode().get_or_new(episode_id=0, season=season_info)[0]
+
+            show_json_path = self.path_from_url(self.show_json_url())
+            show_json_parsed = show_json_path.parsed_json()
+
+            # If information is upt to date nothing needs to be done
+            if episode_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
+                return
+
+            self.add_shared_episode_info(episode_info, show_json_parsed["details"]["entity"])
+
+            episode_info.name = "Movie"
+            episode_info.sort_order = 0
+            episode_info.number = "0"
+
+            episode_info.add_timestamps_and_save(show_json_path)
+
+    def add_shared_episode_info(self, episode_info: Episode, episode_json: dict[str, Any]) -> None:
+        episode_info.description = episode_json["description"]
+
+        base_img_url = episode_json["artwork"]["video.horizontal.hero"]["path"]
+        # This is the only image resolution that Hulu automatically generates as far as I can tell
+        # This URL format was found using Google image search
+        episode_info.image_url = base_img_url + "&size=600x338&format=jpeg"
+        episode_info.thumbnail_url = episode_info.image_url
+        episode_info.release_date = datetime.strptime(episode_json["premiere_date"], "%Y-%m-%dT%H:%M:%SZ").astimezone()
+        episode_info.duration = episode_json["duration"]
