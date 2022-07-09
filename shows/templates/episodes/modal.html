@@ -71,8 +71,18 @@
                     {{episode.watch_form}}
                 </form>
                 <button class="btn btn-success" onclick="episode_watched()">Watched</button>
-                <button class="btn btn-primary" onclick="prev_episode_modal()">Prev Episode</button>
-                <button type="button" class="btn btn-primary" onclick="next_episode_modal()">Next Episode</button>
+                <button class="btn btn-primary" onclick="prev_episode_modal()">Prev Show</button>
+                <button type="button" class="btn btn-primary" onclick="next_episode_modal()">Next Show</button>
+                {% if episode.next_episode %}
+                    <button 
+                    hx-get="{% url 'episodes:episode_modal' episode.next_episode.id %}" {% comment %} Set the URL htmx links to {% endcomment %}
+                    hx-target="#htmx_modal"
+                    hx-trigger="click"
+                    class="btn btn-info"
+                    _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop">Next Episode</button>
+                {% endif %}
+            
+
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
             </div>
         </div>
@@ -104,7 +114,19 @@
             // Get the button for the next card
             let next_card = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]').parentElement.nextElementSibling.querySelector('div[hx-get]');
             closeModal();
+            value.click();
+        }
+        function next_episode_modal() {
+            // Get the button that is for this card
+            let value = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]');
+            // Get the button for the next card
+            let next_card = document.querySelector('div[hx-get="/episodes/{{ episode.id }}/modal/"]').parentElement.nextElementSibling.querySelector('div[hx-get]');
+            closeModal();
             next_card.click();
+        }
+        function fuck() {
+            closeModal();
+            return true;
         }
     </script>
 {% endblock %}

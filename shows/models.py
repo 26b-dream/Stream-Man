@@ -182,6 +182,15 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
 
         return EpisodeWatchForm(initial={"episode": self, "watch_date": date.today()})
 
+    def next_episode(self) -> Optional[Episode]:
+        use_next_episode = False
+        for season in self.season.show.season_set.all():
+            for episode in season.episode_set.all():
+                if use_next_episode:
+                    return episode
+                if episode == self:
+                    use_next_episode = True
+
 
 class EpisodeWatch(models.Model):
     """Tracks every time an episode is watched"""
