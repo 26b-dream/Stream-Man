@@ -37,8 +37,9 @@ for subclass in ScraperUpdateShared.__subclasses__():
 
 def __url_to_class(url: str) -> ScraperShowShared:
     for subclass in SHOW_SUBCLASSES.values():
-        if url.startswith(subclass.DOMAIN):
-            return subclass(url)
+        if hasattr(subclass, "DOMAIN"):
+            if url.startswith(subclass.DOMAIN):
+                return subclass(url)
 
     raise InvalidURL(f"Invalid url {url}")
 
