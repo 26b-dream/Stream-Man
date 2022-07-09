@@ -217,15 +217,6 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
 
                 self.season_html_path(season["id"]).write(page.content())
 
-    def update_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,

@@ -203,15 +203,6 @@ class FunimationShow(FunimationBase, ScraperShowShared):
 
                 raise ValueError(f"Unable to find matching season for {season_id}, {season_name}")
 
-    def update_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,

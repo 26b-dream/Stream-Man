@@ -176,15 +176,6 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                     self.go_to_page_logged_in(page, self.DOMAIN + partial_episode_url)
                     episode_html_path.write(page.content())
 
-    def update_all(
-        self,
-        minimum_info_timestamp: Optional[datetime] = None,
-        minimum_modified_timestamp: Optional[datetime] = None,
-    ) -> None:
-        self.update_show(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_seasons(minimum_info_timestamp, minimum_modified_timestamp)
-        self.update_episodes(minimum_info_timestamp, minimum_modified_timestamp)
-
     def update_show(
         self,
         minimum_info_timestamp: Optional[datetime] = None,
