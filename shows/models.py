@@ -73,7 +73,7 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
         if episode := Episode.objects.filter(season__show=self).order_by("release_date").reverse():
             return episode
         else:
-            raise ValueError(f"Show {self.name} {self.id} has no airing date")
+            raise ValueError(f"Show {self.name} {self.id} has no episodes with airing dates")
 
 
 class Season(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstract models always throws type errors
