@@ -250,7 +250,6 @@ class HuluShow(ScraperShowShared, HuluBase):
             # The images are the one returned in Google image searches
             self.show_info.image_url = base_img_url + "&size=1200x630&format=jpeg"
             self.show_info.thumbnail_url = base_img_url + "&size=600x338&format=jpeg"
-            self.show_info.show_id_2 = parsed_show_json["id"]
             self.show_info.add_timestamps_and_save(self.path_from_url(self.show_url()))
 
     def update_seasons(
@@ -334,8 +333,8 @@ class HuluShow(ScraperShowShared, HuluBase):
 
         base_img_url = episode_json["artwork"]["video.horizontal.hero"]["path"]
         # This is the only image resolution that Hulu automatically generates as far as I can tell
-        # This URL format was found using Google image search
-        episode_info.image_url = base_img_url + "&size=600x338&format=jpeg"
+        # This URL format was found by inspecting the URLs that are loaded when loading the web page
+        episode_info.image_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
         episode_info.thumbnail_url = episode_info.image_url
         episode_info.release_date = datetime.strptime(episode_json["premiere_date"], "%Y-%m-%dT%H:%M:%SZ").astimezone()
         episode_info.duration = episode_json["duration"]
