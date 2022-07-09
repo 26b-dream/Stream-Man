@@ -36,7 +36,7 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
 
     show_id = models.CharField(max_length=64)
     # Alternative show_id used for cross referencing CrunchyRoll and Justwatch
-    show_id_2 = models.CharField(max_length=64, null=True)
+    show_id_2 = models.CharField(max_length=64, null=True, blank=True)
     name = models.CharField(max_length=256)
     media_type = models.CharField(max_length=256, null=True)
     description = models.TextField()
