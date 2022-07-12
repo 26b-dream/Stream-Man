@@ -331,7 +331,15 @@ class HuluShow(ScraperShowShared, HuluBase):
     def add_shared_episode_info(self, episode_info: Episode, episode_json: dict[str, Any]) -> None:
         episode_info.description = episode_json["description"]
 
-        base_img_url = episode_json["artwork"]["video.horizontal.hero"]["path"]
+        # This image usually exist, but every now and then it doesn't
+        # Example: https://www.hulu.com/movie/the-bobs-burgers-movie-a90a300b-2ee8-4446-84a8-441d37d06b86
+        if img_check := episode_json["artwork"].get("video.horizontal.hero"):
+            base_img_url = img_check["path"]
+        # This image isn't great, but it works as a substitute when the other is missing
+        else:
+            img_check = episode_json["artwork"].get("detail.horizontal.hero")
+            base_img_url = img_check["path"]
+
         # This is the only image resolution that Hulu automatically generates as far as I can tell
         # This URL format was found by inspecting the URLs that are loaded when loading the web page
         episode_info.image_url = base_img_url + '&operations=[{"resize":"600x600|max"},{"format":"webp"}]'
