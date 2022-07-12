@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+# Standard Library
+import datetime
+
 if TYPE_CHECKING:
     from django.db.models.query import QuerySet
 
@@ -131,6 +134,10 @@ class Builder:
         def chronological(cls, episodes: QuerySet[Episode]) -> QuerySet[Episode]:
             return episodes.order_by("season__sort_order", "sort_order")
 
+        @classmethod
+        def newest_first(cls, episodes: QuerySet[Episode]) -> QuerySet[Episode]:
+            return episodes.order_by("release_date").reverse()
+
     class ChangeShowIf:
         acceptable_functions: list[tuple[str, str]] = []
 
@@ -152,6 +159,14 @@ class Builder:
         @classmethod
         def shuffle(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
             random.shuffle(grouped_episodes)
+
+        @classmethod
+        def newest_first(cls, grouped_episodes: list[tuple[Show, list[Episode]]]) -> None:
+            grouped_episodes.sort(key=cls.__newest_first, reverse=True)
+
+        @classmethod
+        def __newest_first(cls, test: tuple[Show, list[Episode]]) -> datetime.datetime:
+            return test[1][0].release_date
 
         # TODO: This is is slow, can be easily sped up, this is just a proof of concept example
         @classmethod
