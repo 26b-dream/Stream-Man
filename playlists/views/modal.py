@@ -42,6 +42,21 @@ def filter_episodes(request: HttpRequest, playlist_id: int) -> HttpResponse:
     #   This is done to set the default number of episodes shown at 100
     playlist_order_form = PlaylistSortForm(request.POST)
     if not playlist_order_form.is_valid():
+        print(playlist_order_form.errors)
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
+        print("INVALID")
         playlist_order_form = PlaylistSortForm()
 
     # TODO: Form validation

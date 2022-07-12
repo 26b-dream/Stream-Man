@@ -13,24 +13,50 @@
                 {% comment %} id="episode_order_form" - Allows the submit button to be outisde of the form {% endcomment %}
                 <form action="{% url 'playlists:playlist' playlist.id %}" method="post" id="episode_order_form">
                     {% csrf_token %}
-                    {% comment %} Group forms by the group value to make the form more organized {% endcomment %}
-                    {% regroup playlist_order_form by field.group as field_groups %}
+                    <div class="row">
+                        <div class="col border border-2">
+                            <h5>Show Order</h5>
+                            {{ playlist_order_form.show_order }}
+                        </div>
+                        <div class="col border border-2">
+                            <h5>Episode Order</h5>
+                            {{ playlist_order_form.episode_order }}
+                        </div>
+                    </div>
 
-                    {% comment %} Go through each group one at a time to display just the information for that specific group {% endcomment %}
-                    {% for field_group in field_groups %}
+                    <div class="row">
+                        <div class="col border border-2">
+                            <h5>Change Show</h5>
+                            {{ playlist_order_form.change_show }}
+                        </div>
+                        <div class="col border border-2">
+                            <h5>Rotate Type</h5>
+                            {{ playlist_order_form.rotate_type }}
+                        </div>
+                    </div>
 
-                        {% comment %} Devider is only needed after the first iteration otherwise a pointless one will be added at the top {% endcomment %}
-                        {% if not forloop.first %}<hr>{% endif %}
 
-                        {% comment %} Add the title of the field at the top to make it easier to read {% endcomment %}
-                        {{field_group.list.0.field.group_title}}
-
-                        {% comment %} Add every field to the form {% endcomment %}
-                        {% for field in field_group.list %}
-                            {{field}}
-                        {% endfor %}
-                    {% endfor %}
-                  </form>
+                    <div class="row">
+                        <div class="col border border-2">
+                            <h5>Filter</h5>
+                            {{ playlist_order_form.episode_filter }}
+                        </div>
+                        <div class="col border border-2">
+                            <h5>Reverse</h5>
+                            {{ playlist_order_form.reverse }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col border border-2">
+                            <h5>Websites</h5>
+                            {{ playlist_order_form.websites }}
+                        </div>
+                        <div class="col border border-2">
+                            <h5>Episodes</h5>
+                            {{ playlist_order_form.number_of_episodes }}
+                        </div>
+                    </div>
+                </form>
             </div>
             <div class="modal-footer">
                 <input class="btn btn-primary" form="episode_order_form" type="submit" value="Sort Episodes">

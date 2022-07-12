@@ -1,11 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-
 # Django
 from django import forms
 from django.utils.safestring import mark_safe
@@ -75,61 +69,36 @@ class PlaylistRenameForm(forms.ModelForm):
         fields = ["name"]
 
 
-class group_mixin:
-    group: Optional[int]
-    group_title: Optional[str]
-
-
-class grouped_choice_field(forms.ChoiceField, group_mixin):
-    """Modified version of ChoiceField that allows for grouping choices"""
-
-
-class grouped_multiple_choice_field(forms.MultipleChoiceField, group_mixin):
-    """Modified version of MultipleChoiceField that allows for grouping choices"""
-
-
-class grouped_integer_field(forms.IntegerField, group_mixin):
-    """Modified version of IntegerField that allows for grouping choices"""
-
-
 class PlaylistSortForm(forms.Form):
     """Form used to sort and filter playlists"""
 
-    show_order = grouped_choice_field(
+    show_order = forms.ChoiceField(
         choices=Builder.ShowOrder.acceptable_functions,
         widget=forms.RadioSelect,
         initial="random",
         required=False,
     )
-    show_order.group = 0
-    show_order.group_title = "Show Order"
 
-    episode_order = grouped_choice_field(
+    episode_order = forms.ChoiceField(
         choices=Builder.EpisodeOrder.acceptable_functions,
         widget=forms.RadioSelect,
         initial="chronological",
         required=False,
     )
-    episode_order.group = 1
-    episode_order.group_title = "Episode Order"
 
-    change_show = grouped_choice_field(
+    change_show = forms.ChoiceField(
         choices=Builder.ChangeShowIf.acceptable_functions,
         widget=forms.RadioSelect,
         initial="after_every_episode",
         required=False,
     )
-    change_show.group = 2
-    change_show.group_title = "Change Show"
 
-    rotate_type = grouped_choice_field(
+    rotate_type = forms.ChoiceField(
         choices=Builder.Resort.acceptable_functions,
         widget=forms.RadioSelect,
         required=False,
         initial="rotate",
     )
-    rotate_type.group = 3
-    rotate_type.group_title = "Rotate Type"
 
     FILTER_OPTIONS = (
         ("include_watched", "Include Watched"),
@@ -140,13 +109,9 @@ class PlaylistSortForm(forms.Form):
         ("shows", "Shows"),
         ("episodes", "Episodes"),
     )
-    reverse = grouped_multiple_choice_field(
-        choices=REVERSE_OPTIONS, widget=forms.CheckboxSelectMultiple, required=False
-    )
-    reverse.group = 4
-    reverse.group_title = "Reverse"
+    reverse = forms.MultipleChoiceField(choices=REVERSE_OPTIONS, widget=forms.CheckboxSelectMultiple, required=False)
 
-    websites = grouped_multiple_choice_field(
+    websites = forms.MultipleChoiceField(
         choices=[
             (x.WEBSITE, mark_safe(f"<img src={x.FAVICON_URL} style='width:16px;height:16px;'> {x.WEBSITE}"))
             for x in SHOW_SUBCLASSES.values()
@@ -155,17 +120,11 @@ class PlaylistSortForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
-    websites.group = 5
-    websites.group_title = "Wesbites"
 
-    episode_filter = grouped_multiple_choice_field(
+    episode_filter = forms.MultipleChoiceField(
         choices=FILTER_OPTIONS, widget=forms.CheckboxSelectMultiple, required=False
     )
-    episode_filter.group = 6
-    episode_filter.group_title = "Filter"
 
-    number_of_episodes = grouped_integer_field(initial=100)
-    number_of_episodes.group = 7
-    number_of_episodes.group_title = "Number of Episodes"
+    number_of_episodes = forms.IntegerField(initial=100)
 
     # Group specific fields together so the form is easier to use
