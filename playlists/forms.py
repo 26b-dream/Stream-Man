@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 # Django
 from django import forms
+from django.utils.safestring import mark_safe
 
 # Common
 from common.scrapers import SHOW_SUBCLASSES
@@ -146,7 +147,11 @@ class PlaylistSortForm(forms.Form):
     reverse.group_title = "Reverse"
 
     websites = grouped_multiple_choice_field(
-        choices=[(x.WEBSITE, x.WEBSITE) for x in SHOW_SUBCLASSES.values()],
+        choices=[
+            (x.WEBSITE, mark_safe(f"<img src={x.FAVICON_URL} style='width:16px;height:16px;'> {x.WEBSITE}"))
+            for x in SHOW_SUBCLASSES.values()
+            if x.WEBSITE != "WEBSITE NAME"
+        ],
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
