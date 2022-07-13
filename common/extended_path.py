@@ -211,7 +211,7 @@ class ExtendedPath((type(Path()))):
         output = ExtendedPath()
         for i, x in enumerate(self.parts):
             # Ignore the first value to remove the top level directory
-            if i > parents_to_remove:
+            if i > parents_to_remove - 1:
                 # Rebuild path using the remaining parts
                 output = output / x
         return output
@@ -226,3 +226,7 @@ class ExtendedPath((type(Path()))):
     def aware_mtime(self) -> datetime:
         """Create an aware timestamp from the file's mtime"""
         return datetime.fromtimestamp(self.stat().st_mtime).astimezone()
+
+    def depth(self) -> int:
+        """Get the depth of the path"""
+        return len(self.parts)

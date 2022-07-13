@@ -19,7 +19,7 @@ from .hidive_base import HidiveBase
 from .hidive_show import HidiveShow
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperUpdateShared
+from plugins.streaming.shared import ScraperUpdateShared
 
 
 class HidiveUpdate(HidiveBase, ScraperUpdateShared):

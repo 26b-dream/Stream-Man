@@ -10,7 +10,7 @@ import common.configure_django  # type: ignore # noqa: F401 - Modified global va
 from shows.models import Show
 
 # Plugins
-import plugins.show_scrapers as scrapers
+import plugins.streaming as scrapers
 
 if __name__ == "__main__":
     for show in Show.objects.all():

@@ -32,7 +32,7 @@ from playlists.functions import update_form, update_queue
 from playlists.models import Playlist, PlaylistImportQueue, PlaylistShow
 
 # Plugins
-from plugins import show_scrapers
+from plugins import streaming
 
 
 # TODO: This code is not optimized at all, and should probably be moved into a separate function
@@ -49,7 +49,7 @@ def playlist_que_formset(request: HttpRequest, playlist_id: int) -> HttpResponse
         shows_in_que = PlaylistImportQueue.objects.filter(playlist=playlist).all()
         for show_in_que in shows_in_que:
             # Import show information
-            show_scraper = show_scrapers.Scraper(show_in_que.url)
+            show_scraper = streaming.Scraper(show_in_que.url)
 
             # Import information
             show_scraper.import_all()
@@ -89,7 +89,7 @@ def remove_show_formset(request: HttpRequest, playlist_id: int) -> HttpResponse:
 
 # TODO: This is a mess
 def update_shows(request: HttpRequest, playlist_id: int) -> HttpResponseRedirect:
-    for website in show_scrapers.UPDATE_SUBSCLASSES.values():
+    for website in streaming.UPDATE_SUBSCLASSES.values():
         # TODO: For some reason scrapers.UPDATE_SUBSCLASSES's type includes the abstract class
         # TODO: In reality it is only implementations of the abstract class
         # TODO: This causes type errors

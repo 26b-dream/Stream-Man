@@ -30,7 +30,7 @@ from shows.models import Episode, Season
 from .netflix_base import NetflixBase
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperShowShared
+from plugins.streaming.shared import ScraperShowShared
 
 
 class NetflixShow(NetflixBase, ScraperShowShared):

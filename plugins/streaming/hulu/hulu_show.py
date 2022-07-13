@@ -29,7 +29,7 @@ from shows.models import Episode, Season, Show
 from .hulu_base import HuluBase
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperShowShared
+from plugins.streaming.shared import ScraperShowShared
 
 
 class HuluShow(ScraperShowShared, HuluBase):

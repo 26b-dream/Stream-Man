@@ -12,24 +12,25 @@ from datetime import date, datetime
 from shows.models import Show
 
 # Local
-from .discoveryplus_base import DiscoveryplusBase
-from .discoveryplus_show import DiscoveryPlusShow
+from .hulu_base import HuluBase
+from .hulu_show import HuluShow
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperUpdateShared
+from plugins.streaming.shared import ScraperUpdateShared
 
 
-class DiscoveryPlusUpdate(DiscoveryplusBase, ScraperUpdateShared):
+class HuluUpdate(HuluBase, ScraperUpdateShared):
     JUSTWATCH_PROVIDER_IDS = [15]
 
     def justwatch_update(self, justwatch_entry: dict[str, Any], date: datetime) -> None:
         # Only information on JustWatch that can be cross referenced is the title
+        # List all keys for justwatch_entry
         # TODO: This is supposed to be a temporary workaround...
-        show_title = justwatch_entry.get("show_title")
+        show_title = justwatch_entry.get("show_title") or justwatch_entry.get("title")
         show = Show.objects.filter(website=self.WEBSITE, name=show_title)
         if show:
-            DiscoveryPlusShow(show[0]).import_all(minimum_info_timestamp=date)
+            HuluShow(show[0]).import_all(minimum_info_timestamp=date)
 
-    # Hulu doesn't have any calendar of sorts for this function
+    # Netflix doesn't have any calendar of sorts for this function
     def check_for_updates(self, earliest_date: Optional[date] = None) -> None:
         return

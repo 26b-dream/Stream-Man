@@ -9,7 +9,7 @@ from .builder import Builder
 from .models import Playlist, PlaylistSeason, PlaylistShow
 
 # Plugins
-from plugins.show_scrapers import SUBCLASSES
+from plugins.streaming import SHOW_SUBCLASSES
 
 
 # Don't use a model form set because it makes it harder to manage empty strngs in the form
@@ -114,7 +114,7 @@ class PlaylistSortForm(forms.Form):
     websites = forms.MultipleChoiceField(
         choices=[
             (x.WEBSITE, mark_safe(f"<img src={x.FAVICON_URL} style='width:16px;height:16px;'> {x.WEBSITE}"))
-            for x in SUBCLASSES.values()
+            for x in SHOW_SUBCLASSES.values()
         ],
         widget=forms.CheckboxSelectMultiple,
         required=False,

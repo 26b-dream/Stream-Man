@@ -13,7 +13,7 @@ from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
 
 # Plugins
-from plugins.show_scrapers import UPDATE_SUBSCLASSES
+from plugins.streaming import UPDATE_SUBSCLASSES
 
 
 class JustWatch:

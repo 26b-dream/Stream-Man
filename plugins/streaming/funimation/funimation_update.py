@@ -22,7 +22,7 @@ from .funimation_base import FunimationBase
 from .funimation_show import FunimationShow
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperUpdateShared
+from plugins.streaming.shared import ScraperUpdateShared
 
 
 class FunimationUpdate(ScraperUpdateShared, FunimationBase):

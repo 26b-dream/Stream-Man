@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from typing import Optional
     from django.db.models.query import QuerySet
     from shows.forms import EpisodeWatchForm
-    from plugins.show_scrapers.shared import ScraperShowShared
+    from plugins.streaming.shared import ScraperShowShared
 
 # Standard Library
 from datetime import date
@@ -30,7 +30,11 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
     class Meta:  # type: ignore - Meta class always throws type errors
         db_table = "show"
         ordering = ["name"]
-        unique_together = [["website", "show_id"], ["website", "show_id_2"]]
+
+        constraints = [
+            models.UniqueConstraint(fields=["website", "show_id"], name="website__show_id"),
+            models.UniqueConstraint(fields=["website", "show_id_2"], name="website_show_id_2"),
+        ]
 
     website = models.CharField(max_length=64)  # Website the show is from
 
@@ -51,9 +55,9 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
     def scraper_instance(self) -> ScraperShowShared:
         # Import this here as an easy work-a-around for circular imports
         # Plugins
-        from plugins import show_scrapers
+        from plugins import streaming
 
-        return show_scrapers.Scraper(self)
+        return streaming.Scraper(self)
 
     def last_watched_date(self, lazy: bool = False) -> date:
         if episode := EpisodeWatch.objects.filter(episode__season__show=self).order_by("watch_date").last():
@@ -82,7 +86,7 @@ class Season(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abs
 
     class Meta:  # type: ignore - Meta class always throws type errors
         db_table = "season"
-        unique_together = [["show", "season_id"]]
+        constraints = [models.UniqueConstraint(fields=["show", "season_id"], name="show_season_id")]
         ordering = ["show", "sort_order"]
 
     show = models.ForeignKey(Show, on_delete=models.CASCADE)  # Parent show
@@ -108,7 +112,7 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
 
     class Meta:  # type: ignore - Meta class always throws type errors
         db_table = "episode"
-        unique_together = [["season", "episode_id"]]
+        constraints = [models.UniqueConstraint(fields=["season", "episode_id"], name="Episode_season_episode_id")]
         ordering = ["season", "sort_order"]
 
     season = models.ForeignKey(Season, on_delete=models.CASCADE)  # Parent season
@@ -162,18 +166,18 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
         # TODO: Clean this circular import garbage up
         # Import this here as an easy work-a-around for circular imports
         # Plugins
-        from plugins import show_scrapers
+        from plugins import streaming
 
-        return show_scrapers.Scraper(self.season.show).episode_url(self)
+        return streaming.Scraper(self.season.show).episode_url(self)
 
     @cache  # Should never change and is safe to cache
     def scraper_instance(self) -> ScraperShowShared:
         # TODO: Clean this circular import garbage up
         # Import this here as an easy work-a-around for circular imports
         # Plugins
-        from plugins import show_scrapers
+        from plugins import streaming
 
-        return show_scrapers.Scraper(self.season.show)
+        return streaming.Scraper(self.season.show)
 
     def watch_form(self) -> EpisodeWatchForm:
         # TODO: Clean this circular import garbage up
@@ -202,7 +206,10 @@ class EpisodeWatch(models.Model):
         # Technically you can watch an episode more than once in a single day
         # It's far more likely to accidently mark an episode as watched twice in the same day
         # Adding a unique constraint here will avoid the possibility of accidently double-watching an episode
-        unique_together = [["episode", "watch_date"]]
+        constraints = [
+            models.UniqueConstraint(fields=["episode", "watch_date"], name="EpisodeWatch_episode_watch_date")
+        ]
+
         ordering = ["watch_date"]
 
     episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
@@ -210,3 +217,62 @@ class EpisodeWatch(models.Model):
 
     def __str__(self) -> str:
         return f"{self.watch_date} - {self.episode}"
+
+
+# class EpisodeCrossRef(models.Model):
+#     """Cross reference episodes to external trackers"""
+
+#     objects: QuerySet[Self]
+
+#     class Meta:  # type: ignore - Meta class always throws type errors
+#         db_table = "episode_cross_ref"
+#         # Technically you can watch an episode more than once in a single day
+#         # It's far more likely to accidently mark an episode as watched twice in the same day
+#         # Adding a unique constraint here will avoid the possibility of accidently double-watching an episode
+#         unique_together = [["episode", "watch_date"]]
+#         ordering = ["watch_date"]
+
+#     episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
+#     website = models.CharField()
+#     show_id = models.CharField()
+#     season_id = models.CharField()
+#     episode_id = models.CharField()
+
+
+class TrackerShow(models.Model):
+    objects: QuerySet[Self]
+
+    class Meta:  # type: ignore - Meta class always throws type errors
+        db_table = "tracker_show"
+        constraints = [models.UniqueConstraint(fields=["website", "show_id"], name="TrackerShow_website_show_id")]
+
+    website = models.CharField(max_length=64)
+    show_id = models.CharField(max_length=64)
+    episode_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=256)
+
+
+class TrackerSeason(models.Model):
+    objects: QuerySet[Self]
+
+    class Meta:  # type: ignore - Meta class always throws type errors
+        db_table = "tracker_season"
+        constraints = [models.UniqueConstraint(fields=["show", "season_id"], name="TrackerSeason_show_season_id")]
+
+    show = models.ForeignKey(TrackerShow, on_delete=models.CASCADE)
+    season_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=256)
+
+
+class TrackerEpisode(models.Model):
+    objects: QuerySet[Self]
+
+    class Meta:  # type: ignore - Meta class always throws type errors
+        db_table = "tracker_episode"
+        constraints = [
+            models.UniqueConstraint(fields=["season", "episode_id"], name="TrackerEpisode_season_episode_id")
+        ]
+
+    season = models.ForeignKey(TrackerSeason, on_delete=models.CASCADE)
+    episode_id = models.CharField(max_length=64)
+    name = models.CharField(max_length=256)

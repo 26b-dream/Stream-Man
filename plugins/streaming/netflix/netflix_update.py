@@ -19,7 +19,7 @@ from .netflix_base import NetflixBase
 from .netflix_show import NetflixShow
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperUpdateShared
+from plugins.streaming.shared import ScraperUpdateShared
 
 
 class NetflixUpdate(NetflixBase, ScraperUpdateShared):

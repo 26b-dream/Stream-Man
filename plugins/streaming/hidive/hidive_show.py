@@ -30,7 +30,7 @@ from shows.models import Episode, Season
 from .hidive_base import HidiveBase
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperShowShared
+from plugins.streaming.shared import ScraperShowShared
 
 
 class HidiveShow(ScraperShowShared, HidiveBase):

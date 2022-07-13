@@ -30,7 +30,7 @@ from shows.models import Episode, Season
 from .discoveryplus_base import DiscoveryplusBase
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperShowShared
+from plugins.streaming.shared import ScraperShowShared
 
 
 class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):

@@ -22,7 +22,7 @@ from .crunchyroll_base import CrunchyrollBase
 from .crunchyroll_show import CrunchyrollShow
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperUpdateShared
+from plugins.streaming.shared import ScraperUpdateShared
 
 
 class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):

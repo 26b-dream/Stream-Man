@@ -26,7 +26,7 @@ from shows.models import Episode, Season
 from .funimation_base import FunimationBase
 
 # Plugins
-from plugins.show_scrapers.shared import ScraperShowShared
+from plugins.streaming.shared import ScraperShowShared
 
 
 class FunimationShow(FunimationBase, ScraperShowShared):

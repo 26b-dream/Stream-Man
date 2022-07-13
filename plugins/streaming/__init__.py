@@ -12,10 +12,11 @@ if TYPE_CHECKING:
 import importlib
 
 # Common
+from common.constants import BASE_DIR
 from common.extended_path import ExtendedPath
 
 # Plugins
-from plugins.show_scrapers.shared import (
+from plugins.streaming.shared import (
     MissingShowClass,
     ScraperShowShared,
     ScraperUpdateShared,
@@ -24,14 +25,19 @@ from plugins.show_scrapers.shared import (
 # Import all plugins
 plugins_dir = ExtendedPath(__file__).parent
 for plugin in plugins_dir.glob("*"):
-    module_name = f"plugins.show_scrapers.{plugin.stem}"
-    module = importlib.import_module(module_name)
+    # Plugins should be in a golder
+    # Ignore __pycahce _- files
+    if plugin.is_dir() and plugin.name != "__pycache__":
+        relative_path = plugin.remove_parent(BASE_DIR.depth())
+        dot_name = str(relative_path).replace("\\", ".")
+        module_name = dot_name.removesuffix(".py")
+        module = importlib.import_module(module_name)
 
-SUBCLASSES: dict[str, type[ScraperShowShared]] = {}
+SHOW_SUBCLASSES: dict[str, type[ScraperShowShared]] = {}
 """All real fully implemented subclasses"""
 for subclass in ScraperShowShared.__subclasses__():
     if subclass.WEBSITE != MissingShowClass.WEBSITE:
-        SUBCLASSES[f"{subclass.WEBSITE}"] = subclass
+        SHOW_SUBCLASSES[f"{subclass.WEBSITE}"] = subclass
 
 UPDATE_SUBSCLASSES: dict[str, type[ScraperUpdateShared]] = {}
 for subclass in ScraperUpdateShared.__subclasses__():
@@ -39,7 +45,7 @@ for subclass in ScraperUpdateShared.__subclasses__():
 
 
 def __url_to_class(url: str) -> ScraperShowShared:
-    for subclass in SUBCLASSES.values():
+    for subclass in SHOW_SUBCLASSES.values():
         if hasattr(subclass, "DOMAIN"):
             if url.startswith(subclass.DOMAIN):
                 return subclass(url)
@@ -49,7 +55,7 @@ def __url_to_class(url: str) -> ScraperShowShared:
 
 def __show_to_class(show: Show) -> ScraperShowShared:
     try:
-        return SUBCLASSES[show.website](show)
+        return SHOW_SUBCLASSES[show.website](show)
     except KeyError:
         print(1111111111111111111111111)
         return MissingShowClass(show)
