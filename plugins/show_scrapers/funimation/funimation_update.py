@@ -18,10 +18,10 @@ import common.extended_re as re
 from shows.models import Show
 
 # Local
+from .funimation_base import FunimationBase
 from .funimation_show import FunimationShow
 
 # Plugins
-from plugins.show_scrapers.funimation.funimation_base import FunimationBase
 from plugins.show_scrapers.shared import ScraperUpdateShared
 
 

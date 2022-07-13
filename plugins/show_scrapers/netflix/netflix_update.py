@@ -14,9 +14,11 @@ import common.extended_re as re
 # Apps
 from shows.models import Show
 
+# Local
+from .netflix_base import NetflixBase
+from .netflix_show import NetflixShow
+
 # Plugins
-from plugins.show_scrapers.netflix.netflix_base import NetflixBase
-from plugins.show_scrapers.netflix.netflix_show import NetflixShow
 from plugins.show_scrapers.shared import ScraperUpdateShared
 
 

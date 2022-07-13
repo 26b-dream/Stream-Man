@@ -25,8 +25,10 @@ from config.config import HuluSecrets
 # Apps
 from shows.models import Episode, Season, Show
 
+# Local
+from .hulu_base import HuluBase
+
 # Plugins
-from plugins.show_scrapers.hulu.hulu_base import HuluBase
 from plugins.show_scrapers.shared import ScraperShowShared
 
 

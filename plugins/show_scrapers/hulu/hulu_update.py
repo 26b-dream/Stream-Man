@@ -11,9 +11,11 @@ from datetime import date, datetime
 # Apps
 from shows.models import Show
 
+# Local
+from .hulu_base import HuluBase
+from .hulu_show import HuluShow
+
 # Plugins
-from plugins.show_scrapers.hulu.hulu_base import HuluBase
-from plugins.show_scrapers.hulu.hulu_show import HuluShow
 from plugins.show_scrapers.shared import ScraperUpdateShared
 
 

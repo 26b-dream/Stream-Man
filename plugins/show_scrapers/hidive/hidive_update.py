@@ -14,9 +14,11 @@ import common.extended_re as re
 # Apps
 from shows.models import Show
 
+# Local
+from .hidive_base import HidiveBase
+from .hidive_show import HidiveShow
+
 # Plugins
-from plugins.show_scrapers.hidive.hidive_base import HidiveBase
-from plugins.show_scrapers.hidive.hidive_show import HidiveShow
 from plugins.show_scrapers.shared import ScraperUpdateShared
 
 

@@ -26,8 +26,10 @@ from config.config import NetflixSecrets
 # Apps
 from shows.models import Episode, Season
 
+# Local
+from .netflix_base import NetflixBase
+
 # Plugins
-from plugins.show_scrapers.netflix.netflix_base import NetflixBase
 from plugins.show_scrapers.shared import ScraperShowShared
 
 

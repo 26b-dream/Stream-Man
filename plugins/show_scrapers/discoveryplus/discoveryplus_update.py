@@ -11,9 +11,11 @@ from datetime import date, datetime
 # Apps
 from shows.models import Show
 
+# Local
+from .discoveryplus_base import DiscoveryplusBase
+from .discoveryplus_show import DiscoveryPlusShow
+
 # Plugins
-from plugins.show_scrapers.discoveryplus.discoveryplus_base import DiscoveryplusBase
-from plugins.show_scrapers.discoveryplus.discoveryplus_show import DiscoveryPlusShow
 from plugins.show_scrapers.shared import ScraperUpdateShared
 
 

@@ -26,8 +26,10 @@ from config.config import DiscoveryPlusSecrets
 # Apps
 from shows.models import Episode, Season
 
+# Local
+from .discoveryplus_base import DiscoveryplusBase
+
 # Plugins
-from plugins.show_scrapers.discoveryplus.discoveryplus_base import DiscoveryplusBase
 from plugins.show_scrapers.shared import ScraperShowShared
 
 

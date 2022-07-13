@@ -26,8 +26,10 @@ from config.config import HIDIVESecrets
 # Apps
 from shows.models import Episode, Season
 
+# Local
+from .hidive_base import HidiveBase
+
 # Plugins
-from plugins.show_scrapers.hidive.hidive_base import HidiveBase
 from plugins.show_scrapers.shared import ScraperShowShared
 
 
