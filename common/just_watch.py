@@ -11,7 +11,9 @@ from datetime import date, datetime, timedelta
 # Utils
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers import UPDATE_SUBSCLASSES
+
+# Plugins
+from plugins.show_scrapers import UPDATE_SUBSCLASSES
 
 
 class JustWatch:

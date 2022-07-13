@@ -8,13 +8,13 @@ if TYPE_CHECKING:
 # Standard Library
 from datetime import date, datetime
 
-# Common
-from common.scrapers.plugins.discoveryplus.discoveryplus_base import DiscoveryplusBase
-from common.scrapers.plugins.discoveryplus.discoveryplus_show import DiscoveryPlusShow
-from common.scrapers.shared import ScraperUpdateShared
-
 # Apps
 from shows.models import Show
+
+# Plugins
+from plugins.show_scrapers.discoveryplus.discoveryplus_base import DiscoveryplusBase
+from plugins.show_scrapers.discoveryplus.discoveryplus_show import DiscoveryPlusShow
+from plugins.show_scrapers.shared import ScraperUpdateShared
 
 
 class DiscoveryPlusUpdate(DiscoveryplusBase, ScraperUpdateShared):

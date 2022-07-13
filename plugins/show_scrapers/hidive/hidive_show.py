@@ -19,14 +19,16 @@ from playwright.sync_api import sync_playwright
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers.plugins.hidive.hidive_base import HidiveBase
-from common.scrapers.shared import ScraperShowShared
 
 # Config
 from config.config import HIDIVESecrets
 
 # Apps
 from shows.models import Episode, Season
+
+# Plugins
+from plugins.show_scrapers.hidive.hidive_base import HidiveBase
+from plugins.show_scrapers.shared import ScraperShowShared
 
 
 class HidiveShow(ScraperShowShared, HidiveBase):

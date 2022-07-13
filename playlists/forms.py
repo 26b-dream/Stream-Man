@@ -4,12 +4,12 @@ from __future__ import annotations
 from django import forms
 from django.utils.safestring import mark_safe
 
-# Common
-from common.scrapers import SHOW_SUBCLASSES
-
 # Local
 from .builder import Builder
 from .models import Playlist, PlaylistSeason, PlaylistShow
+
+# Plugins
+from plugins.show_scrapers import SUBCLASSES
 
 
 # Don't use a model form set because it makes it harder to manage empty strngs in the form
@@ -114,8 +114,7 @@ class PlaylistSortForm(forms.Form):
     websites = forms.MultipleChoiceField(
         choices=[
             (x.WEBSITE, mark_safe(f"<img src={x.FAVICON_URL} style='width:16px;height:16px;'> {x.WEBSITE}"))
-            for x in SHOW_SUBCLASSES.values()
-            if x.WEBSITE != "WEBSITE NAME"
+            for x in SUBCLASSES.values()
         ],
         widget=forms.CheckboxSelectMultiple,
         required=False,

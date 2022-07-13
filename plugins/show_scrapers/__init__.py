@@ -13,22 +13,25 @@ import importlib
 
 # Common
 from common.extended_path import ExtendedPath
-from common.scrapers.shared import (
+
+# Plugins
+from plugins.show_scrapers.shared import (
     MissingShowClass,
     ScraperShowShared,
     ScraperUpdateShared,
 )
 
 # Import all plugins
-plugins_dir = ExtendedPath(__file__).parent / "plugins"
+plugins_dir = ExtendedPath(__file__).parent
 for plugin in plugins_dir.glob("*"):
-    module_name = f"common.scrapers.plugins.{plugin.stem}"
+    module_name = f"plugins.show_scrapers.{plugin.stem}"
     module = importlib.import_module(module_name)
 
-# Lists of subclasses are static so they can be constants
-SHOW_SUBCLASSES: dict[str, type[ScraperShowShared]] = {}
+SUBCLASSES: dict[str, type[ScraperShowShared]] = {}
+"""All real fully implemented subclasses"""
 for subclass in ScraperShowShared.__subclasses__():
-    SHOW_SUBCLASSES[f"{subclass.WEBSITE}"] = subclass
+    if subclass.WEBSITE != MissingShowClass.WEBSITE:
+        SUBCLASSES[f"{subclass.WEBSITE}"] = subclass
 
 UPDATE_SUBSCLASSES: dict[str, type[ScraperUpdateShared]] = {}
 for subclass in ScraperUpdateShared.__subclasses__():
@@ -36,7 +39,7 @@ for subclass in ScraperUpdateShared.__subclasses__():
 
 
 def __url_to_class(url: str) -> ScraperShowShared:
-    for subclass in SHOW_SUBCLASSES.values():
+    for subclass in SUBCLASSES.values():
         if hasattr(subclass, "DOMAIN"):
             if url.startswith(subclass.DOMAIN):
                 return subclass(url)
@@ -46,8 +49,9 @@ def __url_to_class(url: str) -> ScraperShowShared:
 
 def __show_to_class(show: Show) -> ScraperShowShared:
     try:
-        return SHOW_SUBCLASSES[show.website](show)
+        return SUBCLASSES[show.website](show)
     except KeyError:
+        print(1111111111111111111111111)
         return MissingShowClass(show)
 
 

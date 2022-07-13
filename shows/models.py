@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from typing import Optional
     from django.db.models.query import QuerySet
     from shows.forms import EpisodeWatchForm
-    from common.scrapers.shared import ScraperShowShared
+    from plugins.show_scrapers.shared import ScraperShowShared
 
 # Standard Library
 from datetime import date
@@ -50,10 +50,10 @@ class Show(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing abstr
     @cache  # Should never change and is safe to cache
     def scraper_instance(self) -> ScraperShowShared:
         # Import this here as an easy work-a-around for circular imports
-        # Common
-        from common import scrapers
+        # Plugins
+        from plugins import show_scrapers
 
-        return scrapers.Scraper(self)
+        return show_scrapers.Scraper(self)
 
     def last_watched_date(self, lazy: bool = False) -> date:
         if episode := EpisodeWatch.objects.filter(episode__season__show=self).order_by("watch_date").last():
@@ -161,19 +161,19 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
     def url(self) -> str:
         # TODO: Clean this circular import garbage up
         # Import this here as an easy work-a-around for circular imports
-        # Common
-        from common import scrapers
+        # Plugins
+        from plugins import show_scrapers
 
-        return scrapers.Scraper(self.season.show).episode_url(self)
+        return show_scrapers.Scraper(self.season.show).episode_url(self)
 
     @cache  # Should never change and is safe to cache
     def scraper_instance(self) -> ScraperShowShared:
         # TODO: Clean this circular import garbage up
         # Import this here as an easy work-a-around for circular imports
-        # Common
-        from common import scrapers
+        # Plugins
+        from plugins import show_scrapers
 
-        return scrapers.Scraper(self.season.show)
+        return show_scrapers.Scraper(self.season.show)
 
     def watch_form(self) -> EpisodeWatchForm:
         # TODO: Clean this circular import garbage up

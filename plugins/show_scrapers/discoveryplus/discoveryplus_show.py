@@ -19,14 +19,16 @@ from playwright.sync_api._generated import Page
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers.plugins.discoveryplus.discoveryplus_base import DiscoveryplusBase
-from common.scrapers.shared import ScraperShowShared
 
 # Config
 from config.config import DiscoveryPlusSecrets
 
 # Apps
 from shows.models import Episode, Season
+
+# Plugins
+from plugins.show_scrapers.discoveryplus.discoveryplus_base import DiscoveryplusBase
+from plugins.show_scrapers.shared import ScraperShowShared
 
 
 class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):

@@ -19,14 +19,16 @@ from playwright.sync_api import sync_playwright
 # Common
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers.plugins.netflix.netflix_base import NetflixBase
-from common.scrapers.shared import ScraperShowShared
 
 # Config
 from config.config import NetflixSecrets
 
 # Apps
 from shows.models import Episode, Season
+
+# Plugins
+from plugins.show_scrapers.netflix.netflix_base import NetflixBase
+from plugins.show_scrapers.shared import ScraperShowShared
 
 
 class NetflixShow(NetflixBase, ScraperShowShared):

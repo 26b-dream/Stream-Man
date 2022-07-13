@@ -13,7 +13,6 @@ import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
 from common.extended_playwright import sync_playwright
-from common.scrapers.shared import ScraperUpdateShared
 
 # Apps
 from shows.models import Show
@@ -21,6 +20,9 @@ from shows.models import Show
 # Local
 from .crunchyroll_base import CrunchyrollBase
 from .crunchyroll_show import CrunchyrollShow
+
+# Plugins
+from plugins.show_scrapers.shared import ScraperUpdateShared
 
 
 class CrunchyrollUpdate(CrunchyrollBase, ScraperUpdateShared):

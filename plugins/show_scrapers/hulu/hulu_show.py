@@ -18,14 +18,16 @@ from playwright.sync_api._generated import Page
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers.plugins.hulu.hulu_base import HuluBase
-from common.scrapers.shared import ScraperShowShared
 
 # Config
 from config.config import HuluSecrets
 
 # Apps
 from shows.models import Episode, Season, Show
+
+# Plugins
+from plugins.show_scrapers.hulu.hulu_base import HuluBase
+from plugins.show_scrapers.shared import ScraperShowShared
 
 
 class HuluShow(ScraperShowShared, HuluBase):

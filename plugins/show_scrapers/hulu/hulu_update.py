@@ -8,13 +8,13 @@ if TYPE_CHECKING:
 # Standard Library
 from datetime import date, datetime
 
-# Common
-from common.scrapers.plugins.hulu.hulu_base import HuluBase
-from common.scrapers.plugins.hulu.hulu_show import HuluShow
-from common.scrapers.shared import ScraperUpdateShared
-
 # Apps
 from shows.models import Show
+
+# Plugins
+from plugins.show_scrapers.hulu.hulu_base import HuluBase
+from plugins.show_scrapers.hulu.hulu_show import HuluShow
+from plugins.show_scrapers.shared import ScraperUpdateShared
 
 
 class HuluUpdate(HuluBase, ScraperUpdateShared):

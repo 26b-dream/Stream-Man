@@ -17,7 +17,6 @@ from playwright.sync_api import sync_playwright
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers.shared import ScraperShowShared
 
 # Config
 from config.config import CrunchyrollSecrets
@@ -27,6 +26,9 @@ from shows.models import Episode, Season
 
 # Local
 from .crunchyroll_base import CrunchyrollBase
+
+# Plugins
+from plugins.show_scrapers.shared import ScraperShowShared
 
 
 class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):

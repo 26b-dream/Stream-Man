@@ -18,13 +18,15 @@ from playwright.sync_api import sync_playwright
 import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
-from common.scrapers.shared import ScraperShowShared
 
 # Apps
 from shows.models import Episode, Season
 
 # Local
 from .funimation_base import FunimationBase
+
+# Plugins
+from plugins.show_scrapers.shared import ScraperShowShared
 
 
 class FunimationShow(FunimationBase, ScraperShowShared):

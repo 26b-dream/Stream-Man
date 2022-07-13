@@ -10,12 +10,14 @@ from datetime import date, datetime
 
 # Common
 import common.extended_re as re
-from common.scrapers.plugins.netflix.netflix_base import NetflixBase
-from common.scrapers.plugins.netflix.netflix_show import NetflixShow
-from common.scrapers.shared import ScraperUpdateShared
 
 # Apps
 from shows.models import Show
+
+# Plugins
+from plugins.show_scrapers.netflix.netflix_base import NetflixBase
+from plugins.show_scrapers.netflix.netflix_show import NetflixShow
+from plugins.show_scrapers.shared import ScraperUpdateShared
 
 
 class NetflixUpdate(NetflixBase, ScraperUpdateShared):

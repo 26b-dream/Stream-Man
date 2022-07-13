@@ -12,8 +12,6 @@ from datetime import datetime
 
 # Common
 import common.extended_re as re
-from common.scrapers.plugins.funimation.funimation_base import FunimationBase
-from common.scrapers.shared import ScraperUpdateShared
 
 # Apps
 # Shows
@@ -21,6 +19,10 @@ from shows.models import Show
 
 # Local
 from .funimation_show import FunimationShow
+
+# Plugins
+from plugins.show_scrapers.funimation.funimation_base import FunimationBase
+from plugins.show_scrapers.shared import ScraperUpdateShared
 
 
 class FunimationUpdate(ScraperUpdateShared, FunimationBase):

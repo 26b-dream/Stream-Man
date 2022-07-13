@@ -10,12 +10,14 @@ from datetime import date, datetime
 
 # Common
 import common.extended_re as re
-from common.scrapers.plugins.hidive.hidive_base import HidiveBase
-from common.scrapers.plugins.hidive.hidive_show import HidiveShow
-from common.scrapers.shared import ScraperUpdateShared
 
 # Apps
 from shows.models import Show
+
+# Plugins
+from plugins.show_scrapers.hidive.hidive_base import HidiveBase
+from plugins.show_scrapers.hidive.hidive_show import HidiveShow
+from plugins.show_scrapers.shared import ScraperUpdateShared
 
 
 class HidiveUpdate(HidiveBase, ScraperUpdateShared):
