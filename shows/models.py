@@ -132,7 +132,7 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
     description = models.TextField()
     release_date = models.DateTimeField()
     duration = models.PositiveSmallIntegerField()
-    cross_referenced = models.BooleanField()
+    cross_referenced = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return self.name
