@@ -25,7 +25,7 @@ from plugins.streaming.shared import (
 # Import all plugins
 plugins_dir = ExtendedPath(__file__).parent
 for plugin in plugins_dir.glob("*"):
-    # Plugins should be in a golder
+    # Plugins should be in a folder
     # Ignore __pycahce _- files
     if plugin.is_dir() and plugin.name != "__pycache__":
         relative_path = plugin.remove_parent(BASE_DIR.depth())
