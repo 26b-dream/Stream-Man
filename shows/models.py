@@ -132,6 +132,7 @@ class Episode(ModelWithIdAndTimestamp, GetOrNew):  # type: ignore - Composing ab
     description = models.TextField()
     release_date = models.DateTimeField()
     duration = models.PositiveSmallIntegerField()
+    cross_referenced = models.BooleanField()
 
     def __str__(self) -> str:
         return self.name
@@ -217,62 +218,3 @@ class EpisodeWatch(models.Model):
 
     def __str__(self) -> str:
         return f"{self.watch_date} - {self.episode}"
-
-
-# class EpisodeCrossRef(models.Model):
-#     """Cross reference episodes to external trackers"""
-
-#     objects: QuerySet[Self]
-
-#     class Meta:  # type: ignore - Meta class always throws type errors
-#         db_table = "episode_cross_ref"
-#         # Technically you can watch an episode more than once in a single day
-#         # It's far more likely to accidently mark an episode as watched twice in the same day
-#         # Adding a unique constraint here will avoid the possibility of accidently double-watching an episode
-#         unique_together = [["episode", "watch_date"]]
-#         ordering = ["watch_date"]
-
-#     episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
-#     website = models.CharField()
-#     show_id = models.CharField()
-#     season_id = models.CharField()
-#     episode_id = models.CharField()
-
-
-class TrackerShow(models.Model):
-    objects: QuerySet[Self]
-
-    class Meta:  # type: ignore - Meta class always throws type errors
-        db_table = "tracker_show"
-        constraints = [models.UniqueConstraint(fields=["website", "show_id"], name="TrackerShow_website_show_id")]
-
-    website = models.CharField(max_length=64)
-    show_id = models.CharField(max_length=64)
-    episode_id = models.CharField(max_length=64)
-    name = models.CharField(max_length=256)
-
-
-class TrackerSeason(models.Model):
-    objects: QuerySet[Self]
-
-    class Meta:  # type: ignore - Meta class always throws type errors
-        db_table = "tracker_season"
-        constraints = [models.UniqueConstraint(fields=["show", "season_id"], name="TrackerSeason_show_season_id")]
-
-    show = models.ForeignKey(TrackerShow, on_delete=models.CASCADE)
-    season_id = models.CharField(max_length=64)
-    name = models.CharField(max_length=256)
-
-
-class TrackerEpisode(models.Model):
-    objects: QuerySet[Self]
-
-    class Meta:  # type: ignore - Meta class always throws type errors
-        db_table = "tracker_episode"
-        constraints = [
-            models.UniqueConstraint(fields=["season", "episode_id"], name="TrackerEpisode_season_episode_id")
-        ]
-
-    season = models.ForeignKey(TrackerSeason, on_delete=models.CASCADE)
-    episode_id = models.CharField(max_length=64)
-    name = models.CharField(max_length=256)
