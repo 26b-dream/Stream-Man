@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any, Optional
-    from playwright.sync_api._generated import Page
 
 # Standard Library
 import json
@@ -14,6 +13,7 @@ from functools import cache
 # Third Party
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
+from playwright.sync_api._generated import Page
 
 # Common
 import common.extended_re as re
@@ -139,7 +139,8 @@ class HidiveShow(ScraperShowShared, HidiveBase):
                 page = self.playwright_browser(playwright).new_page()
                 self.download_show(page, minimum_timestamp)
                 self.download_seasons(page, minimum_timestamp)
-                self.download_episodes(page, minimum_timestamp)
+                # By default never update episodes because the information should be statitc
+                self.download_episodes(page)
                 page.close()
 
         if self.any_file_is_outdated(minimum_timestamp):
