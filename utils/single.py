@@ -7,7 +7,7 @@ from datetime import datetime
 import common.configure_django  # type: ignore # noqa: F401 - Modified global values
 
 # Plugins
-import plugins.show_scrapers as scrapers
+import plugins.streaming as scrapers
 
 if __name__ == "__main__":
     current_time = datetime.now().astimezone()
