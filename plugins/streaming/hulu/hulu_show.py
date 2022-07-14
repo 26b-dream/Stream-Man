@@ -268,8 +268,7 @@ class HuluShow(ScraperShowShared, HuluBase):
             if not season_info.information_up_to_date(minimum_info_timestamp, minimum_modified_timestamp):
                 season_info.name = season["name"]
                 # This sometimes leads to wacky numbers for things like specials, but it works fine
-                season_info.number = season_id
-                season_info.sort_order = i
+                season_info.sort_order = season_info.number = season_id
                 # Hulu does not have season specific images so keep them blank
 
                 season_info.add_timestamps_and_save(season_json_path)
@@ -277,7 +276,6 @@ class HuluShow(ScraperShowShared, HuluBase):
         if not self.season_list():
             season_info = Season().get_or_new(season_id=self.show_id, show=self.show_info)[0]
             season_info.name = "Movie"
-            # This sometimes leads to wacky numbers for things like specials, but it works fine
             season_info.number = "0"
             season_info.sort_order = 0
 
