@@ -105,26 +105,6 @@ class HuluShow(ScraperShowShared, HuluBase):
         """There is no such thing as a URL for a season so just create a season specific path directly"""
         return self.path_from_url(self.show_url() + f"/{season}")
 
-    def download_response(self, response: Response) -> None:
-        if "/content/v5/hubs/" in response.url:
-            parsed_json = response.json()
-            # Save show files
-            if self.show_json_url() in response.url:
-                self.save_response_json(parsed_json)
-
-                for component in parsed_json["components"]:
-                    # Split the first season information from the show file
-                    for item in component["items"]:
-                        if item.get("items"):
-                            self.save_response_json(item)
-                        # Split extra from the season file
-                    if component["name"] == "Extras":
-                        self.save_response_json(component)
-
-            # Save season files
-            else:
-                self.save_response_json(parsed_json)
-
     def save_response_json(self, parsed_json: Any) -> None:
         season_url = parsed_json["href"]
         season_path = self.path_from_url(season_url)
@@ -186,6 +166,26 @@ class HuluShow(ScraperShowShared, HuluBase):
         season_json_path = self.path_from_url(season["href"])
         return season_json_path.outdated(minimum_timestamp)
 
+    def download_response(self, response: Response) -> None:
+        if "/content/v5/hubs/" in response.url:
+            parsed_json = response.json()
+            # Save show files
+            if self.show_json_url() in response.url:
+                self.save_response_json(parsed_json)
+
+                for component in parsed_json["components"]:
+                    # Split the first season information from the show file
+                    for item in component["items"]:
+                        if item.get("items"):
+                            self.save_response_json(item)
+                        # Split extra from the season file
+                    if component["name"] == "Extras":
+                        self.save_response_json(component)
+
+            # Save season files
+            else:
+                self.save_response_json(parsed_json)
+
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
         # Check if files exist before creating a playwright instance
         if self.any_file_is_outdated(minimum_timestamp):
@@ -230,12 +230,12 @@ class HuluShow(ScraperShowShared, HuluBase):
                 season_json_path = self.path_from_url(self.season_json_url(season_number))
 
                 if season_html_path.outdated(minimum_timestamp) or season_json_path.outdated(minimum_timestamp):
-                    page.strict_query_selector(
-                        f"ul[data-automationid='detailsdropdown-list'] >> li >> text={season_name}"
-                    ).click()
+                    button = page.strict_query_selector(
+                        f"ul[data-automationid='detailsdropdown-list'] >> li >> text='{season_name}'"
+                    )
+                    button.click()
 
                     self.wait_for_files(page, season_json_path)
-
                     season_html_path.write(page.content())
 
     def update_show(
