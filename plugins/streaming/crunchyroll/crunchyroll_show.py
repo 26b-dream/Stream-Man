@@ -83,7 +83,7 @@ class CrunchyrollShow(ScraperShowShared, CrunchyrollBase):
         self,
         page: Page,
         url: str,
-        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "networkidle",
+        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "load",
     ) -> None:
         page.goto(self.show_url(), wait_until=wait_until)
         if page.url == "https://www.crunchyroll.com/":
