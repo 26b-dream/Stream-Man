@@ -31,13 +31,17 @@ class ScraperShared(ABC):
     WEBSITE: str
     DOMAIN: str
 
-    @cache  # Re-use the same browser instance to download everything
     def playwright_browser(self, playwright: Playwright) -> BrowserContext:
+        # Browser seem to suck when headless=False
+        #   Firefox will just show a white screen if using cookies that already exist
+        #   Chrome constantly crashes when closing the web browser
+        # Chrome constantly has crashes when not running in headless mode
+        # Firefox seems to be more stable
         return playwright.chromium.launch_persistent_context(
-            DOWNLOADED_FILES_DIR / "cookies/Chrome",
+            user_data_dir=DOWNLOADED_FILES_DIR / "cookies/chrome",
             headless=False,
-            accept_downloads=True,
             channel="chrome",
+            slow_mo=100,
         )
 
 
