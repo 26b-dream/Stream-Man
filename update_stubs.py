@@ -50,7 +50,7 @@ def update_bs4():
     # Get stub paths
     stub_path = (
         ExtendedPath.home()
-        / ".vscode/extensions/ms-python.vscode-pylance-2022.6.0/dist/typeshed-fallback/stubs/beautifulsoup4/bs4"
+        / ".vscode/extensions/ms-python.vscode-pylance-2022.7.30/dist/typeshed-fallback/stubs/beautifulsoup4/bs4"
     )
     typing_path = BASE_DIR / "typings" / "bs4"
     stub = typing_path / "element.pyi"
