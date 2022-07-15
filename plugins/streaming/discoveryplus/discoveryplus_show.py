@@ -50,10 +50,15 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
 
     @cache
     def season_json_path(self, season_id: str) -> ExtendedPath:
-        show_hash = self.generic_show_episodes()["id"]  # I don't actually know waht this value represents
-        show_id_2 = self.generic_show_episodes()["attributes"]["component"]["mandatoryParams"]
-        url = f"{self.API_URL}/cms/collections/{show_hash}?include=default&decorators=viewingHistory,isFavorite,playbackAllowed&pf[seasonNumber]={season_id}&{show_id_2}"
-        return self.path_from_url(url)
+        # Shows with only one season store the episode information in the show file
+        options = self.generic_show_episodes()["attributes"]["component"]["filters"][0]["options"]
+        if len(options) == 1:
+            return self.show_json_path()
+        else:
+            show_hash = self.generic_show_episodes()["id"]  # I don't actually know waht this value represents
+            show_id_2 = self.generic_show_episodes()["attributes"]["component"]["mandatoryParams"]
+            url = f"{self.API_URL}/cms/collections/{show_hash}?include=default&decorators=viewingHistory,isFavorite,playbackAllowed&pf[seasonNumber]={season_id}&{show_id_2}"
+            return self.path_from_url(url)
 
     @cache
     def season_html_path(self, season_id: str) -> ExtendedPath:
@@ -170,14 +175,14 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
         raise ValueError(f"Could not find {self.show_id} in json")
 
     def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        # Check if files exist before creating a playwright instance
-        # if self.any_file_is_outdated(minimum_timestamp):
-        with sync_playwright() as playwright:
-            browser = self.playwright_browser(playwright)
-            page = browser.new_page()
-            page.on("response", lambda request: self.download_response(request))
-            self.download_show(page, minimum_timestamp)
-            self.download_seasons(page, minimum_timestamp)
+        #  Check if files exist before creating a playwright instance
+        if self.any_file_is_outdated(minimum_timestamp):
+            with sync_playwright() as playwright:
+                browser = self.playwright_browser(playwright)
+                page = browser.new_page()
+                page.on("response", lambda request: self.download_response(request))
+                self.download_show(page, minimum_timestamp)
+                self.download_seasons(page, minimum_timestamp)
 
     def download_response(self, response: Response) -> None:
         if "/cms/" in response.url:
@@ -224,7 +229,9 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
                 # Click the correct season
                 page.click(f'div[data-testid="season-dropdown"] li >> text={season_name}')
 
-            self.wait_for_files(page, self.season_json_path(season["id"]))
+                # Shows with only a single season do not have a seperate season json file
+                self.wait_for_files(page, self.season_json_path(season["id"]))
+
             self.season_html_path(season_number).write(page.content())
 
     def update_show(
@@ -274,7 +281,6 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
             season_info = Season().get_or_new(season_id=season["id"], show=self.show_info)[0]
             season_json_path = self.season_json_path(season["id"])
             season_json_parsed = season_json_path.parsed_json()
-            print(season_json_path)
 
             for sort_id, episode in enumerate(season_json_parsed["included"]):
                 # Ignore these entries because these are not for episodes
@@ -307,7 +313,7 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
                     episode_info.sort_order = episode["attributes"]["episodeNumber"]
                     episode_info.duration = episode["attributes"]["videoDuration"] / 1000
 
-                    episode_info.add_timestamps_and_save(self.season_json_path(season["id"]))
+                    episode_info.add_timestamps_and_save(season_json_path)
 
     def episode_image_url(self, image_id: str, season_json_parsed: dict[str, Any]) -> str:
         # Go through all the included images and find the image that matches
