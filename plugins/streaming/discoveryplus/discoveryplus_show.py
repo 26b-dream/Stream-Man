@@ -111,9 +111,9 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
             # Wait for the profile selection div instead
             page.click(f"div:has-text('{DiscoveryPlusSecrets.NAME}')")
 
-            # Wait for the correct page to completely load
-            # Should be automatically redirected to the original page
-            page.wait_for_load_state("networkidle")
+        # Wait for the correct page to completely load
+        # Should be automatically redirected to the original page
+        page.wait_for_load_state("networkidle")
 
     @cache
     def path_from_url(self, url: str) -> ExtendedPath:
