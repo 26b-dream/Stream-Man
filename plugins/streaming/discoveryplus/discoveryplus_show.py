@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 # Standard Library
 from datetime import datetime
 from functools import cache
-from time import sleep
 
 # Third Party
 from playwright.sync_api import sync_playwright
@@ -90,39 +89,31 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
             season_id
         ).outdated((minimum_timestamp))
 
-    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
-        # Check if files exist before creating a playwright instance
-        if self.any_file_is_outdated(minimum_timestamp):
-            with sync_playwright() as playwright:
-                page = self.playwright_browser(playwright).new_page()
-                page.on("response", lambda request: self.download_response(request))
-                self.download_show(page, minimum_timestamp)
-                self.download_seasons(page, minimum_timestamp)
-                page.close()
-
     def go_to_page_logged_in(self, page: Page, url: str) -> None:
-        page.goto(url, wait_until="networkidle")
+        page.goto(url)
+
+        # domcontentloaded and load do not wait long enough for some reason
+        # network idle sometimes never happens due to the trailers being streamed prior to login
+        # Wait for either the login button or the user selector to be visible
+        page.wait_for_selector("a:has-text('Sign In'), div[id='navBar-user-menu']")
+
         if login_button := page.query_selector("a:has-text('Sign In')"):
             # Click sign in button
             login_button.click()
-            page.wait_for_load_state("networkidle")
 
-            # TODO: There is sometimes a captcha...
+            # TODO: There is sometimes a captcha that needs to be solved
             page.type("input[id='email']", DiscoveryPlusSecrets.EMAIL)
             page.type("input[id='password']", DiscoveryPlusSecrets.PASSWORD)
             page.click("button[type='submit']")
-            # networkidle, domcontentloaded, and load do not work, just use a fat sleep
-            sleep(5)
 
-        # If there is a user selector select the correct user
-        if page.click_if_exists(f"div:has-text('{DiscoveryPlusSecrets.NAME}')"):
-            # Same as above when loggin in
-            # networkidle, domcontentloaded, and load do not work, just use a fat sleep
-            sleep(5)
+            # After signing in a profile will always need to be selected
+            # networkidle, domcontentloaded, and load do not work consistently
+            # Wait for the profile selection div instead
+            page.click(f"div:has-text('{DiscoveryPlusSecrets.NAME}')")
 
-        # If the url is incorrect after redirects go to the URL
-        if page.url != url:
-            page.goto(url, wait_until="networkidle")
+            # Wait for the correct page to completely load
+            # Should be automatically redirected to the original page
+            page.wait_for_load_state("networkidle")
 
     @cache
     def path_from_url(self, url: str) -> ExtendedPath:
@@ -133,11 +124,15 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
             url = url.removeprefix(self.API_URL)
             url = url.removeprefix("/")
 
-            return (
-                DOWNLOADED_FILES_DIR
-                / self.WEBSITE
-                / ExtendedPath(url.replace("?", "/")).legalize().with_suffix(".json")
-            )
+            # The URL contains periods sometimes
+            # Do not use .with_suffix because it will break the URL
+            # .with_suffix("") will cause naming collisions
+            legalized = ExtendedPath(url.replace("?", "/")).legalize()
+            parent = legalized.parent
+            name = legalized.name
+            name = str(f"{name}.json")
+
+            return DOWNLOADED_FILES_DIR / self.WEBSITE / parent / name
         else:
             url = url.removeprefix(self.DOMAIN)
             url = url.removeprefix("/")
@@ -174,6 +169,16 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
 
         raise ValueError(f"Could not find {self.show_id} in json")
 
+    def download_all(self, minimum_timestamp: Optional[datetime] = None) -> None:
+        # Check if files exist before creating a playwright instance
+        # if self.any_file_is_outdated(minimum_timestamp):
+        with sync_playwright() as playwright:
+            browser = self.playwright_browser(playwright)
+            page = browser.new_page()
+            page.on("response", lambda request: self.download_response(request))
+            self.download_show(page, minimum_timestamp)
+            self.download_seasons(page, minimum_timestamp)
+
     def download_response(self, response: Response) -> None:
         if "/cms/" in response.url:
             parsed_json = response.json()
@@ -201,23 +206,25 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
 
     def download_seasons(self, page: Page, minimum_timestamp: Optional[datetime] = None) -> None:
         for season in self.generic_show_episodes()["attributes"]["component"]["filters"][0]["options"]:
-            # Only go to page if required
-            if page.url != self.show_url():
-                self.go_to_page_logged_in(page, self.show_url())
-
             season_number = season["id"]
             season_name = f"Season {season_number}"
 
-            # Open season selector
-            page.click('div[data-testid="season-dropdown"]')
-            page.wait_for_load_state("domcontentloaded")
+            # if file is up to date nothing needs to be done
+            if self.season_json_path(season_number).up_to_date(minimum_timestamp) and self.season_html_path(
+                season_number
+            ).up_to_date(minimum_timestamp):
+                continue
 
-            # Click the correct season
-            page.click(f'div[data-testid="season-dropdown"] li >> text={season_name}')
+            # Only go to page if required
+            if not page.url.startswith(self.show_url()):
+                self.go_to_page_logged_in(page, self.show_url())
 
-            print(self.season_json_path(season["id"]))
+            # Open season selector and click season if it exists
+            if page.click_if_exists('div[data-testid="season-dropdown"]'):
+                # Click the correct season
+                page.click(f'div[data-testid="season-dropdown"] li >> text={season_name}')
+
             self.wait_for_files(page, self.season_json_path(season["id"]))
-
             self.season_html_path(season_number).write(page.content())
 
     def update_show(
@@ -265,7 +272,9 @@ class DiscoveryPlusShow(ScraperShowShared, DiscoveryplusBase):
     ) -> None:
         for season in self.generic_show_episodes()["attributes"]["component"]["filters"][0]["options"]:
             season_info = Season().get_or_new(season_id=season["id"], show=self.show_info)[0]
-            season_json_parsed = self.season_json_path(season["id"]).parsed_json()
+            season_json_path = self.season_json_path(season["id"])
+            season_json_parsed = season_json_path.parsed_json()
+            print(season_json_path)
 
             for sort_id, episode in enumerate(season_json_parsed["included"]):
                 # Ignore these entries because these are not for episodes
