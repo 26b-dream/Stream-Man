@@ -130,11 +130,10 @@ class HuluShow(ScraperShowShared, HuluBase):
             page.wait_for_url("{self.DOMAIN}/profiles?next=/", wait_until="networkidle")
 
         # User choice always appears when logging it, but it MIGHT appear on old sessions as well
-        # TODO: Does it actually ever appear on old sessions
+        # You can log in but fail to choose a user so this needs to be seperate from logging in
         if page.query_selector(f"a[aria-label='Switch profile to {HuluSecrets.NAME}']"):
             page.click(f"a[aria-label='Switch profile to {HuluSecrets.NAME}']")
             page.wait_for_load_state("networkidle")
-            page.goto(url, wait_until="networkidle")
 
     def season_list(self) -> list[Any]:
         """ "Get a list of all season from the json file"""
