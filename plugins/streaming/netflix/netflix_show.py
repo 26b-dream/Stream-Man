@@ -17,6 +17,7 @@ from functools import cache
 from playwright.sync_api import sync_playwright
 
 # Common
+import common.extended_re as re
 from common.constants import DOWNLOADED_FILES_DIR
 from common.extended_path import ExtendedPath
 
@@ -24,7 +25,7 @@ from common.extended_path import ExtendedPath
 from config.config import NetflixSecrets
 
 # Apps
-from shows.models import Episode, Season
+from shows.models import Episode, Season, Show
 
 # Local
 from .netflix_base import NetflixBase
@@ -35,6 +36,22 @@ from plugins.streaming.shared import ScraperShowShared
 
 class NetflixShow(NetflixBase, ScraperShowShared):
     FAVICON_URL = "https://assets.nflxext.com/ffe/siteui/common/icons/nficon2016.ico"
+
+    def get_id_from_show_url(self, show_url: str) -> None:
+        temp = None
+        regex_match = re.strict_search(self.SHOW_URL_REGEX, show_url)
+        print(regex_match.groupdict())
+        if regex_match.groupdict().get("show_id"):
+            temp = regex_match.groupdict()["show_id"]
+        elif regex_match.groupdict().get("alt_show_id"):
+            temp = regex_match.groupdict()["alt_show_id"]
+
+        if isinstance(temp, str):
+            self.show_id = str(temp)
+        else:  # TODO: This is actually impossible but this is here for pylance
+            raise ValueError("No show ID found")
+
+        self.show_info = Show().get_or_new(show_id=self.show_id, website=self.WEBSITE)[0]
 
     @cache
     def path_from_url(self, url: str) -> ExtendedPath:
@@ -141,6 +158,8 @@ class NetflixShow(NetflixBase, ScraperShowShared):
             page.type("input[id='id_userLoginId']", NetflixSecrets.EMAIL)
             page.type("input[id='id_password']", NetflixSecrets.PASSWORD)
             page.keyboard.press("Enter")
+            # Login was acting up so just in case...
+            page.wait_for_timeout(1000)
             page.wait_for_load_state("networkidle")
 
             # After logging in attempt to go the the original page because it will not redirect automatically
